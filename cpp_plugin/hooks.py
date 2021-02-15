@@ -1,5 +1,4 @@
 import logging
-
 import ida_frame
 import ida_funcs
 import ida_hexrays
@@ -13,6 +12,7 @@ import idc
 from idc import BADADDR
 from .. import cpp_utils, utils
 
+
 logging.basicConfig(
     filename="/tmp/cpp_plugin.log",
     filemode="a",
@@ -22,55 +22,48 @@ logging.basicConfig(
 
 
 class CPPHooks(ida_idp.IDB_Hooks):
-    def __init__(self):
+    def __init__(self, is_decompiler_on):
         super(CPPHooks, self).__init__()
-        self.struct_members_renamed_counter = 0
-        self.struct_members_type_changed_counter = 0
+        self.is_decompiler_on = is_decompiler_on
 
     def renamed(self, ea, new_name, local_name):
-        if self.struct_members_renamed_counter == 0:
-            if utils.is_func(ea):
-                func, args_list = cpp_utils.post_func_name_change(new_name, ea)
-                self.struct_members_renamed_counter = len(args_list)
-                for args in args_list:
-                    func(*args)
+        if utils.is_func(ea):
+            func, args_list = cpp_utils.post_func_name_change(new_name, ea)
+            self.unhook()
+            for args in args_list:
+                func(*args)
+            self.hook()
         return 0
 
     def func_updated(self, pfn):
-        if self.struct_members_type_changed_counter == 0:
-            func, args_list = cpp_utils.post_func_type_change(pfn)
-            self.struct_members_type_changed_counter = len(args_list)
-            for args in args_list:
-                func(*args)
-
+        func, args_list = cpp_utils.post_func_type_change(pfn)
+        self.unhook()
+        for args in args_list:
+            func(*args)
+        self.hook()
         return 0
 
     def renaming_struc_member(self, sptr, mptr, newname):
         if sptr.is_frame():
             return 0
-        if self.struct_members_renamed_counter > 0:
-            self.struct_members_renamed_counter -= 1
-        else:
-            cpp_utils.post_struct_member_name_change(mptr, newname)
+        cpp_utils.post_struct_member_name_change(mptr, newname)
         return 0
 
     def struc_member_changed(self, sptr, mptr):
-        if self.struct_members_type_changed_counter > 0:
-            self.struct_members_type_changed_counter -= 1
-        else:
-            cpp_utils.post_struct_member_type_change(mptr)
+        cpp_utils.post_struct_member_type_change(mptr)
         return 0
 
     def ti_changed(self, ea, typeinf, fnames):
-        res = ida_struct.get_member_by_id(ea)
-        if res is not None:
-            m, name, sptr = res
-            if sptr.is_frame():
-                func = ida_funcs.get_func(ida_frame.get_func_by_frame(sptr.id))
-                if func is not None:
-                    return self.func_updated(func)
-        elif utils.is_func(ea):
-            return self.func_updated(ida_funcs.get_func(ea))
+        if self.is_decompiler_on:
+            res = ida_struct.get_member_by_id(ea)
+            if res is not None:
+                m, name, sptr = res
+                if sptr.is_frame():
+                    func = ida_funcs.get_func(ida_frame.get_func_by_frame(sptr.id))
+                    if func is not None:
+                        return self.func_updated(func)
+            elif utils.is_func(ea):
+                return self.func_updated(ida_funcs.get_func(ea))
         return 0
 
 
@@ -80,9 +73,19 @@ class CPPUIHooks(ida_kernwin.View_Hooks):
         if not (widget_type == 48 or widget_type == 28):
             return
         # Decompiler or Structures window
+        func_cand_name = None
         place, x, y = ida_kernwin.get_custom_viewer_place(viewer, False)
-        line = utils.get_curline_striped_from_viewer(viewer)
-        func_cand_name = cpp_utils.find_valid_cppname_in_line(line, x)
+        if place.name() == "structplace_t":  # Structure window:
+            structplace = ida_kernwin.place_t_as_structplace_t(place)
+            if structplace is not None:
+                s = ida_struct.get_struc(ida_struct.get_struc_by_idx(structplace.idx))
+                if s:
+                    member = ida_struct.get_member(s, structplace.offset)
+                    if member:
+                        func_cand_name = ida_struct.get_member_name(member.id)
+        if func_cand_name is None:
+            line = utils.get_curline_striped_from_viewer(viewer)
+            func_cand_name = cpp_utils.find_valid_cppname_in_line(line, x)
         if func_cand_name is not None:
             func_cand_ea = ida_name.get_name_ea(BADADDR, func_cand_name)
             if func_cand_ea is not None and utils.is_func(func_cand_ea):

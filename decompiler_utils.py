@@ -19,7 +19,10 @@ def get_str_from_expr(expr, make_str=True):
     str_addr = get_obj_ea_from_expr(expr)
     if str_addr == BADADDR:
         return None
-    return idc.get_strlit_contents(str_addr)
+    ret = idc.get_strlit_contents(str_addr)
+    if ret is not None:
+        ret = ret.decode()
+    return ret
 
 
 def extract_op_from_expr(expr, op):

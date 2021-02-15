@@ -23,15 +23,15 @@ The plugin consists of two parts:
 
 This first part is not dependent on the second part, so it possible to use the plugin to reverse engineering a binary that doesn't contain RTTI, by defining those classes manually based on the plugin's API.
 
-What makes the plugin unique is the fact it uses the same environment the researcher is already familiar with, and doesn't add any new menu or object, and based on the known IDA building blocks (structure, union, type for structure's members, etc)
+What makes the plugin unique is the fact it uses the same environment the researcher is already familiar with, and doesn't add any new menu or object, and based on the known IDA building blocks (structure, union, type for structure's members, etc) - **This enable the plugin to support C++ abstracting for every architecture IDA supports**.
 
 **Note:** The RTTI parser parses x86/x64 g++ RTTI, but its structure enables to add support for more architectures and compilers **easily.**
 
 # Requirements
 
-* IDA 7.5 + Hex-Rays Decompiler + Python 3
-  * IDA 7.5 patch so manually created structure will be parsed as VFT - we guess it will be published next SP
-* Linux - There is no something that really depends on Linux, but the plugin was tested on IDA Linux version.
+* IDA 7.5 SP  + Hex-Rays Decompiler + Python 3
+  * This version we partially support disassembly with no decompiler
+* Linux - There is no anything that really depends on Linux, but the plugin was tested on IDA Linux version.
 * [ida-referee](https://github.com/joeleong/ida-referee): We use this useful plugin to save xrefs for struct's members uses in the decompiler. The original plugin doesn't support Python3 so we port it (under the directory `plugins/`)
 
 # Installation:
@@ -90,7 +90,7 @@ int main()
 
 The binary is stripped but contains RTTI.
 
-## Classes Hierarchy Rebuilding
+## RTTI Classes Hierarchy Rebuilding
 
 When we just load the binary, the `main` function (`sub_84D` in the 32 bit version) looks like:
 
@@ -105,6 +105,44 @@ Initiate the g++ RTTI parser and run it, using:
 `GccRTTIParser.build_all()`
 
 Now refresh struct C (see Remarks section), cast `v0` to be `C *`, decompile again:
+
+![](images/main_after.png)
+
+## Manual Classes Hierarchy Rebuilding
+
+For cases that there are no RTTI, our infrastructure still enables to manually define c++ class. For the same example (examples/a32_stripped) you can create manually struct B, then select it's virtual table and type
+
+
+
+![](images/f_b_choose_vtable.png)
+
+`from ida_medigate import cpp_utils`
+
+`cpp_utils.make_vtable("B")`
+
+`make_vtable` can also get `vtable_ea` and `vtable_ea_stop` instead of the selected area.
+
+Then create struct C, and apply the inheritance:
+
+`cpp_utils.add_baseclass("C", "B")`
+
+Now you can rebuild class C vtable by selecting it and typing:
+
+`cpp_utils.make_vtable("C")`
+
+Add structure Z, rebuild its vtable too, and now is the cool part:
+
+`cpp_utils.add_baseclass("C", "Z", 0x0c, to_update=True)` which apply C inheritance of Z at offset 0x0c and refresh the struct too (see remarks).
+
+The last thing remained is too update the second vtable of C, the one that implements the interface of Z. Mark this vtable and type:
+
+`cpp_utils.make_vtable("C", offset_in_class=0x0c)`
+
+ida_medigate knows that this vtable is the vtable of class Z and the result will be:
+
+![](images/vtable_c_z.png)
+
+The final result is the same like in the RTTI case:
 
 ![](images/main_after.png)
 
@@ -142,4 +180,8 @@ Combining this with `ida-referee` enables us to track all the xrefs of virtual f
 
 # Remarks
 
-* The way we mark structure members as subclasses in IDAPython isn't synchronized right away to the IDB. The hack we should do is edit the structure so a synchronization will be triggered (for example add another field at the end of the struct and then undefined it)
+* The way we mark structure members as subclasses in IDAPython isn't synchronized right away to the IDB. The hack we do is to edit the structure so a synchronization will be triggered. You also may use
+
+  `utils.refresh_struct(struct_ptr)`
+
+  which adds a dummy field at the end of the struct and then undefined it.

@@ -31,6 +31,7 @@ class CPPPlugin(ida_idaapi.plugin_t):
         self.gui_hook = None
         self.hexrays_hooks = None
         self.hooking = False
+        self.is_decompiler_on = False
 
     def init(self):
         """
@@ -39,7 +40,8 @@ class CPPPlugin(ida_idaapi.plugin_t):
         """
         if idaapi.init_hexrays_plugin():
             self.hexrays_hooks = HexRaysHooks()
-        self.core_hook = CPPHooks()
+            self.is_decompiler_on = True
+        self.core_hook = CPPHooks(self.is_decompiler_on)
         self.gui_hook = CPPUIHooks()
         self.hook()
         self.install_hotkey()

@@ -1,6 +1,5 @@
 import logging
 import random
-import time
 
 import ida_bytes
 import ida_enum
@@ -21,14 +20,21 @@ import idc
 from idc import BADADDR
 
 # WORD length in bytes
-time.sleep(1)
-info = idaapi.get_inf_structure()
-if info.is_64bit():
-    logging.debug("is 32 bit")
-    WORD_LEN = 8
-elif info.is_32bit():
-    logging.debug("is 32 bit")
-    WORD_LEN = 4
+WORD_LEN = None
+
+
+def update_word_len(code, old=0):
+    global WORD_LEN
+    info = idaapi.get_inf_structure()
+    if info.is_64bit():
+        logging.debug("is 32 bit")
+        WORD_LEN = 8
+    elif info.is_32bit():
+        logging.debug("is 32 bit")
+        WORD_LEN = 4
+
+
+idaapi.notify_when(idaapi.NW_OPENIDB, update_word_len)
 
 
 def get_word(ea):
@@ -108,8 +114,13 @@ def update_func_details(func_ea, func_details):
     return function_tinfo
 
 
-def push_ptr_member_to_struct(
-    struct, member_name, member_type, offset=BADADDR, overwrite=False
+def add_to_struct(
+    struct,
+    member_name,
+    member_type=None,
+    offset=BADADDR,
+    is_offset=False,
+    overwrite=False,
 ):
     mt = None
     flag = idaapi.FF_DWORD
@@ -125,23 +136,31 @@ def push_ptr_member_to_struct(
                 f"Is struct: {ida_struct.get_struc_name(substruct.id)}/{substruct.id}"
             )
             member_size = ida_struct.get_struc_size(substruct.id)
-            member_type = None
     elif WORD_LEN == 4:
         flag = idaapi.FF_DWORD
     elif WORD_LEN == 8:
         flag = idaapi.FF_QWORD
+    if is_offset:
+        flag |= idaapi.FF_0OFF
+        mt = ida_nalt.opinfo_t()
+        r = ida_nalt.refinfo_t()
+        r.init(ida_nalt.get_reftype_by_size(WORD_LEN) | ida_nalt.REFINFO_NOBASE)
+        mt.ri = r
 
     new_member_name = member_name
-    if overwrite and ida_struct.get_member(struct, offset):
-        logging.debug("Overwriting!")
-        ret_val = ida_struct.set_member_name(struct, offset, member_name)
-        i = 0
-        while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
-            new_member_name = "%s_%d" % (member_name, i)
-            i += 1
-            if i > 250:
-                return
-            ret_val = ida_struct.set_member_name(struct, offset, new_member_name)
+    member_ptr = ida_struct.get_member(struct, offset)
+    if overwrite and member_ptr:
+        if ida_struct.get_member_name(member_ptr.id) != member_name:
+            logging.debug("Overwriting!")
+            ret_val = ida_struct.set_member_name(struct, offset, member_name)
+            i = 0
+            while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
+                new_member_name = "%s_%d" % (member_name, i)
+                i += 1
+                if i > 250:
+                    logging.debug("failed change name")
+                    return
+                ret_val = ida_struct.set_member_name(struct, offset, new_member_name)
 
     else:
         ret_val = ida_struct.add_struc_member(
@@ -158,9 +177,7 @@ def push_ptr_member_to_struct(
             )
         if ret_val != 0:
             logging.debug(f"ret_val: {ret_val}")
-    member_ptr = ida_struct.get_member_by_name(struct, new_member_name)
-    if member_ptr is None:
-        logging.debug("member is None")
+        member_ptr = ida_struct.get_member_by_name(struct, new_member_name)
     if member_type is not None and member_ptr is not None:
         ida_struct.set_member_tinfo(
             struct, member_ptr, 0, member_type, idaapi.TINFO_DEFINITE
@@ -185,9 +202,14 @@ def deref_tinfo(tinfo):
 
 
 def get_struc_from_tinfo(struct_tinfo):
-    if not (struct_tinfo.is_struct() or struct_tinfo.is_union()):
+
+    if ida_hexrays.init_hexrays_plugin() and (
+        not (struct_tinfo.is_struct() or struct_tinfo.is_union())
+    ):
         return None
     struct_id = ida_struct.get_struc_id(struct_tinfo.get_type_name())
+    if struct_id == BADADDR:
+        return None
     struct = ida_struct.get_struc(struct_id)
     return struct
 
@@ -238,6 +260,19 @@ def set_member_name(struct, offset, new_name):
             return False
         ret_val = ida_struct.set_member_name(struct, offset, formatted_new_name)
     return True
+
+
+def get_or_create_struct_id(struct_name, is_union=False):
+    struct_id = ida_struct.get_struc_id(struct_name)
+    if struct_id != BADADDR:
+        return struct_id
+    struct_id = ida_struct.add_struc(BADADDR, struct_name, is_union)
+    return struct_id
+
+
+def get_or_create_struct(struct_name):
+    struct_id = get_or_create_struct_id(struct_name)
+    return ida_struct.get_struc(struct_id)
 
 
 def get_signed_int(ea):
@@ -296,7 +331,7 @@ def expand_struct(struct_id, new_size):
             else:
                 logging.warning("Xref wasn't struct_member 0x%x", xref.frm)
 
-    ret = push_ptr_member_to_struct(
+    ret = add_to_struct(
         ida_struct.get_struc(struct_id), None, None, new_size - WORD_LEN
     )
     logging.debug("Now fix args:")
@@ -409,3 +444,52 @@ def find_hex_string(start_ea, stop_ea, hex_string):
         curr_ea = ida_search.find_binary(
             curr_ea + len(hex_string), stop_ea, hex_string, 16, ida_search.SEARCH_DOWN
         )
+
+
+def force_make_struct(ea, struct_name):
+    sptr = get_sptr_by_name(struct_name)
+    if sptr == BADADDR:
+        return False
+    s_size = ida_struct.get_struc_size(sptr)
+    ida_bytes.del_items(ea, ida_bytes.DELIT_SIMPLE, s_size)
+    return ida_bytes.create_struct(ea, s_size, sptr.id)
+
+
+@batchmode
+def set_name_retry(ea, name, name_func=ida_name.set_name, max_attempts=100):
+    i = 0
+    suggested_name = name
+    while not name_func(ea, suggested_name):
+        suggested_name = name + "_" + str(i)
+        i += 1
+        if i == max_attempts:
+            return None
+    return suggested_name
+
+
+def add_struc_retry(name, max_attempts=100):
+    i = 0
+    suggested_name = name
+    sid = ida_struct.add_struc(BADADDR, suggested_name)
+    while sid == BADADDR:
+        suggested_name = name + "_" + str(i)
+        sid = ida_struct.add_struc(BADADDR, suggested_name)
+        i += 1
+        if i == max_attempts:
+            return None, sid
+    return suggested_name, sid
+
+
+def get_selected_range_or_line():
+    selection, startaddr, endaddr = ida_kernwin.read_range_selection(None)
+    if selection:
+        return startaddr, endaddr
+    else:
+        return ida_kernwin.get_screen_ea(), None
+
+
+def refresh_struct(sptr):
+    #  Hack: need to refresh structure so MF_BASECLASS will be updated
+    member_ptr = add_to_struct(sptr, "dummy")
+    ida_struct.del_struc_member(sptr, member_ptr.soff)
+
