@@ -1,8 +1,7 @@
 # Referee
 
 This is a python port of James Koppel's Referee IDA plugin with some updates:  
-https://github.com/jkoppel/project-ironfist/tree/master/tools/Revitalize/Referee
-
+<https://github.com/jkoppel/project-ironfist/tree/master/tools/Revitalize/Referee>
 
 ## What it is
 
@@ -10,8 +9,8 @@ It's much easier to reverse-engineer a structure when you can find every place i
 
 ## Requirements
 
- * IDA 6.2 or higher
- * Hex-Rays Decompiler 1.6 or higher
+* IDA 6.2 or higher
+* Hex-Rays Decompiler 1.6 or higher
 
 ## Installation
 
@@ -25,9 +24,10 @@ Referee does not do type inference; you will still need to give types to your fu
 
 ## Notes
 
- * If you annotate a function to remove a struct-member usage, decompiling the function again will remove the corresponding xrefs.
- * Referee only tracks accesses to structure members, not pointer-passing.
- * Configuring debug output: `logging.getLogger('referee').setLevel(logging.DEBUG)`
+* If you annotate a function to remove a struct-member usage, decompiling the function again will remove the corresponding xrefs.
+* Referee only tracks accesses to structure members, not pointer-passing.
+* Configuring debug output: `logging.getLogger('referee').setLevel(logging.DEBUG)`
 
 ## Related
-- http://reverseengineering.stackexchange.com/questions/2139/is-it-possible-to-create-data-xrefs-manually
+
+<http://reverseengineering.stackexchange.com/questions/2139/is-it-possible-to-create-data-xrefs-manually>
