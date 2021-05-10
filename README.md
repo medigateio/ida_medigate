@@ -90,7 +90,7 @@ The binary is stripped but contains RTTI.
 
 When we just load the binary, the `main` function (`sub_84D` in the 32 bit version) looks like:
 
-![main before](images/main_before.png)
+![main_before](images/main_before.png)
 
 Initiate the g++ RTTI parser and run it, using:
 
@@ -102,13 +102,13 @@ Initiate the g++ RTTI parser and run it, using:
 
 Now refresh struct C (see Remarks section), cast `v0` to be `C *`, decompile again:
 
-![main after](images/main_after.png)
+![main_after](images/main_after.png)
 
 ## Manual Classes Hierarchy Rebuilding
 
 For cases that there are no RTTI, our infrastructure still enables to manually define c++ class. For the same example (examples/a32_stripped) you can create manually struct B, then select it's virtual table and type
 
-![F::B choose vtable](images/f_b_choose_vtable.png)
+![f_b_choose_vtable](images/f_b_choose_vtable.png)
 
 `from ida_medigate import cpp_utils`
 
@@ -134,11 +134,11 @@ The last thing remained is too update the second vtable of C, the one that imple
 
 ida_medigate knows that this vtable is the vtable of class Z and the result will be:
 
-![vtable C::Z](images/vtable_c_z.png)
+![vtable_c_z](images/vtable_c_z.png)
 
 The final result is the same like in the RTTI case:
 
-![main after](images/main_after.png)
+![main_after](images/main_after.png)
 
 ## Synchronization between functions and vtable members
 
@@ -152,15 +152,15 @@ Every name or type changing of a function or its corresponding function pointer 
 
 In line 15 at the previous image, there is a call to B::sub_9A8 (B::f_b in the source code). This function argument is `B *`:
 
-![B func before](images/f_b_before.png)
+![f_b_before](images/f_b_before.png)
 
 But, this function also might be called by a `C` instance (up-casting). we want to see the virtual function it's instance would call. Assume there are many potential derived classes so casting `this` to `C *` not always possible. For that reason, we implement a union for each baseclass that has sons that have a different virtual table. One can choose to show a different derived virtual table of `B`'s derivatives by click alt+y (the shortcut for choosing different union member):
 
-![B func union choose](images/f_b_union_choose.png)
+![f_b_union_choose](images/f_b_union_choose.png)
 
 so ultimately we can "cast" only specific calls to different virtual function:
 
-![B func after](images/f_b_after.png)
+![f_b_after](images/f_b_after.png)
 
 ## **Virtual Functions xref**
 
@@ -168,7 +168,7 @@ The holy-grail of frustrated C++ reverse engineers. We maintain xrefs from virtu
 
 Combining this with `ida-referee` enables us to track all the xrefs of virtual functions calls!
 
-![B func xrefs](images/f_b_xrefs.png)
+![f_b_xrefs](images/f_b_xrefs.png)
 
 *A limitation: we can only track virtual calls which already been decompiled. Fortunately, the auto-analysis knows to populate an argument type between functions, so with the iterative process of casting more arguments->decompiling all the relevant functions -> reading the code again and casting more arguments (...) this ability becomes really **powerful!***
 
