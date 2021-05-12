@@ -4,3 +4,5 @@ __pycache__/
 .vscode/
 .DS_Store
 .python-version
+install.sh
+uninstall.sh
