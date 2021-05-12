@@ -342,7 +342,7 @@ class HexRaysHooks(idaapi.Hexrays_Hooks):
             if self.another_decompile_ea:
                 self.another_decompile_ea = None
                 return 0
-            # if maturity in [idaapi. CMAT_CPA]:
+            # if maturity in [idaapi.CMAT_CPA]:
             # if maturity in [idaapi.CPA]:
             pfv = Polymorphism_fixer_visitor_t(cfunc)
             pfv.apply_to_exprs(cfunc.body, None)
