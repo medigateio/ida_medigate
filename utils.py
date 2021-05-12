@@ -1,5 +1,7 @@
 import logging
 import random
+import platform
+import tempfile
 
 import ida_bytes
 import ida_enum
@@ -21,6 +23,10 @@ from idc import BADADDR
 
 # WORD length in bytes
 WORD_LEN = None
+
+
+def get_tempdir():
+    return "/tmp" if platform.system() == "Darwin" else tempfile.gettempdir()
 
 
 def update_word_len(code, old=0):

@@ -1,4 +1,5 @@
 import logging
+import os
 import ida_frame
 import ida_funcs
 import ida_hexrays
@@ -14,10 +15,10 @@ from .. import cpp_utils, utils
 
 
 logging.basicConfig(
-    filename="/tmp/cpp_plugin.log",
+    filename=os.path.join(utils.get_tempdir(), "cpp_plugin.log"),
     filemode="a",
     level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format="%(asctime)s %(levelname)s %(message)s",
 )
 
 
