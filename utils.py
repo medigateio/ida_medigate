@@ -25,10 +25,6 @@ from idc import BADADDR
 WORD_LEN = None
 
 
-def get_tempdir():
-    return "/tmp" if platform.system() == "Darwin" else tempfile.gettempdir()
-
-
 def update_word_len(code, old=0):
     global WORD_LEN
     info = idaapi.get_inf_structure()
@@ -41,6 +37,7 @@ def update_word_len(code, old=0):
 
 
 idaapi.notify_when(idaapi.NW_OPENIDB, update_word_len)
+update_word_len(idaapi.NW_OPENIDB)
 
 
 def get_word(ea):
@@ -499,3 +496,6 @@ def refresh_struct(sptr):
     member_ptr = add_to_struct(sptr, "dummy")
     ida_struct.del_struc_member(sptr, member_ptr.soff)
 
+
+def get_tempdir():
+    return "/tmp" if platform.system() == "Darwin" else tempfile.gettempdir()
