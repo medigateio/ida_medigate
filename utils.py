@@ -81,8 +81,12 @@ def enum_drefs(ea):
 
 
 def get_typeinf(typestr):
+    if not typestr:
+        # Passing None to tinfo_t.get_named_type() can crash IDA
+        return None
     tif = idaapi.tinfo_t()
-    tif.get_named_type(idaapi.get_idati(), typestr)
+    if not tif.get_named_type(idaapi.get_idati(), typestr):
+        return None
     return tif
 
 
