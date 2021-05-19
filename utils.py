@@ -21,6 +21,14 @@ import idc
 
 from idc import BADADDR
 
+# FIXME: it's not enough to just update WORD_LEN,
+# we also need to update all the global vars and class vars,
+# that are calculated using WORD_LEN
+# We shouldn't store word length in global var at all.
+# Instead we should have a getter func, eg. get_word_len()
+# and call it each time we need word length
+# And we must get rid of all the global and class vars, that depend on word length
+# Insead use instance classes
 # WORD length in bytes
 WORD_LEN = None
 
