@@ -73,7 +73,7 @@ def get_funcs_list():
     pass
 
 
-def get_drefs(ea):
+def enum_drefs(ea):
     xref = ida_xref.get_first_dref_to(ea)
     while xref != BADADDR:
         yield xref
