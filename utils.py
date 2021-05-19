@@ -21,6 +21,16 @@ import idc
 
 from idc import BADADDR
 
+
+def get_word_len():
+    info = idaapi.get_inf_structure()
+    if info.is_64bit():
+        return 8
+    elif info.is_32bit():
+        return 4
+    raise Exception("Unknown address size")
+
+
 # FIXME: it's not enough to just update WORD_LEN,
 # we also need to update all the global vars and class vars,
 # that are calculated using WORD_LEN
@@ -30,28 +40,21 @@ from idc import BADADDR
 # And we must get rid of all the global and class vars, that depend on word length
 # Insead use instance classes
 # WORD length in bytes
-WORD_LEN = None
+WORD_LEN = get_word_len()
 
-
-def update_word_len(code, old=0):
-    global WORD_LEN
-    info = idaapi.get_inf_structure()
-    if info.is_64bit():
-        logging.debug("is 64 bit")
-        WORD_LEN = 8
-    elif info.is_32bit():
-        logging.debug("is 32 bit")
-        WORD_LEN = 4
-
-
-idaapi.notify_when(idaapi.NW_OPENIDB, update_word_len)
-update_word_len(idaapi.NW_OPENIDB)
+if WORD_LEN == 4:
+    logging.debug("is 32 bit")
+elif WORD_LEN == 8:
+    logging.debug("is 64 bit")
+else:
+    logging.error("Unknown address size")
 
 
 def get_word(ea):
-    if WORD_LEN == 4:
+    info = idaapi.get_inf_structure()
+    if info.is_32bit():
         return idaapi.get_32bit(ea)
-    elif WORD_LEN == 8:
+    elif info.is_64bit():
         return idaapi.get_64bit(ea)
     return BADADDR
 
@@ -61,9 +64,10 @@ def get_ptr(ea):
 
 
 def make_word(ea):
-    if WORD_LEN == 4:
+    info = idaapi.get_inf_structure()
+    if info.is_32bit():
         return ida_bytes.create_dword(ea, 4)
-    elif WORD_LEN == 8:
+    elif info.is_64bit():
         return ida_bytes.create_qword(ea, 8)
     return False
 
