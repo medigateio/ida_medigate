@@ -103,6 +103,8 @@ def get_typeinf(typestr):
 
 
 def get_typeinf_ptr(typeinf):
+    if typeinf is None:
+        return None
     old_typeinf = typeinf
     if isinstance(typeinf, str):
         typeinf = get_typeinf(typeinf)
@@ -110,7 +112,9 @@ def get_typeinf_ptr(typeinf):
         logging.warning("Couldn't find typeinf %s", old_typeinf or typeinf)
         return None
     tif = idaapi.tinfo_t()
-    tif.create_ptr(typeinf)
+    if not tif.create_ptr(typeinf):
+        logging.warning("Couldn't create ptr for typeinf %s", old_typeinf or typeinf)
+        return None
     return tif
 
 
