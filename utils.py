@@ -131,8 +131,11 @@ def get_func_details(func_ea):
 
 def update_func_details(func_ea, func_details):
     function_tinfo = idaapi.tinfo_t()
-    function_tinfo.create_func(func_details)
+    if not function_tinfo.create_func(func_details):
+        logging.warning("Couldn't create func from details %X", func_ea)
+        return None
     if not ida_typeinf.apply_tinfo(func_ea, function_tinfo, idaapi.TINFO_DEFINITE):
+        logging.warning("Couldn't apply func tinfo %X", func_ea)
         return None
     return function_tinfo
 
