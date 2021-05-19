@@ -33,7 +33,7 @@ def update_word_len(code, old=0):
     global WORD_LEN
     info = idaapi.get_inf_structure()
     if info.is_64bit():
-        logging.debug("is 32 bit")
+        logging.debug("is 64 bit")
         WORD_LEN = 8
     elif info.is_32bit():
         logging.debug("is 32 bit")
