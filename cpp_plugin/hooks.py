@@ -28,7 +28,7 @@ class CPPHooks(ida_idp.IDB_Hooks):
         self.is_decompiler_on = is_decompiler_on
 
     def renamed(self, ea, new_name, local_name):
-        if utils.is_func(ea):
+        if utils.is_func_start(ea):
             func, args_list = cpp_utils.post_func_name_change(new_name, ea)
             self.unhook()
             for args in args_list:
@@ -63,7 +63,7 @@ class CPPHooks(ida_idp.IDB_Hooks):
                     func = ida_funcs.get_func(ida_frame.get_func_by_frame(sptr.id))
                     if func is not None:
                         return self.func_updated(func)
-            elif utils.is_func(ea):
+            elif utils.is_func_start(ea):
                 return self.func_updated(ida_funcs.get_func(ea))
         return 0
 
@@ -89,7 +89,7 @@ class CPPUIHooks(ida_kernwin.View_Hooks):
             func_cand_name = cpp_utils.find_valid_cppname_in_line(line, x)
         if func_cand_name is not None:
             func_cand_ea = ida_name.get_name_ea(BADADDR, func_cand_name)
-            if func_cand_ea is not None and utils.is_func(func_cand_ea):
+            if func_cand_ea is not None and utils.is_func_start(func_cand_ea):
                 idc.jumpto(func_cand_ea)
 
 

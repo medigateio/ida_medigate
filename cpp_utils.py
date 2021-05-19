@@ -42,7 +42,7 @@ def get_vtable_line(ea, stop_ea=None, ignore_list=None, pure_virtual_name=None):
         ignore_list = []
     func_ea = utils.get_ptr(ea)
     if (
-        utils.is_func(func_ea)
+        utils.is_func_start(func_ea)
         and (stop_ea is None or ea < stop_ea)
         and (
             func_ea not in ignore_list
@@ -337,7 +337,7 @@ def post_struct_member_name_change(member, new_name):
     xrefs = idautils.XrefsFrom(member.id)
     xrefs = filter(lambda x: x.type == ida_xref.dr_I and x.user == 1, xrefs)
     for xref in xrefs:
-        if utils.is_func(xref.to):
+        if utils.is_func_start(xref.to):
             utils.set_func_name(xref.to, new_name)
 
 
@@ -345,7 +345,7 @@ def post_struct_member_type_change(member):
     xrefs = idautils.XrefsFrom(member.id)
     xrefs = filter(lambda x: x.type == ida_xref.dr_I and x.user == 1, xrefs)
     for xref in xrefs:
-        if utils.is_func(xref.to):
+        if utils.is_func_start(xref.to):
             function_ptr_tinfo = idaapi.tinfo_t()
             ida_struct.get_member_tinfo(function_ptr_tinfo, member)
             if function_ptr_tinfo.is_funcptr():

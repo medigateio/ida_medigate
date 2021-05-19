@@ -64,11 +64,9 @@ def make_ptr(ea):
     return make_word(ea)
 
 
-def is_func(ea):
+def is_func_start(ea):
     func = ida_funcs.get_func(ea)
-    if func is not None and func.start_ea == ea:
-        return True
-    return None
+    return func is not None and func.start_ea == ea
 
 
 def get_funcs_list():
