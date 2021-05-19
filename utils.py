@@ -45,7 +45,7 @@ def get_word(ea):
         return idaapi.get_32bit(ea)
     elif WORD_LEN == 8:
         return idaapi.get_64bit(ea)
-    return None
+    return BADADDR
 
 
 def get_ptr(ea):
@@ -57,7 +57,7 @@ def make_word(ea):
         return ida_bytes.create_dword(ea, 4)
     elif WORD_LEN == 8:
         return ida_bytes.create_qword(ea, 8)
-    return None
+    return False
 
 
 def make_ptr(ea):
