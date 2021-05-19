@@ -123,7 +123,9 @@ def get_func_details(func_ea):
     if xfunc is None:
         return None
     func_details = idaapi.func_type_data_t()
-    xfunc.type.get_func_details(func_details)
+    if not xfunc.type.get_func_details(func_details):
+        logging.warning("Couldn't get func type details %X", func_ea)
+        return None
     return func_details
 
 
