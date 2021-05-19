@@ -70,7 +70,7 @@ def is_func_start(ea):
 
 
 def get_funcs_list():
-    pass
+    raise Exception("Not implemented")
 
 
 def enum_drefs(ea):
