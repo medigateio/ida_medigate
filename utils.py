@@ -212,13 +212,10 @@ def add_to_struct(
     return member_ptr
 
 
-def set_func_name(func_ea, func_name):
-    counter = 0
-    new_name = func_name
-    while not ida_name.set_name(func_ea, new_name):
-        new_name = func_name + "_%d" % counter
-        counter += 1
-    return new_name
+def set_func_name(func_ea, new_name):
+    if not idc.set_name(func_ea, new_name, ida_name.SN_CHECK | ida_name.SN_FORCE):
+        logging.warn("Couldn't set func name '%s' at %X", new_name, func_ea)
+    return idc.get_name(func_ea)
 
 
 def deref_tinfo(tinfo):
