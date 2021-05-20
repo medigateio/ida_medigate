@@ -93,11 +93,25 @@ def enum_drefs_to(ea):
         xref = ida_xref.get_next_dref_to(ea, xref)
 
 
+def enum_drefs_from(ea):
+    xref = ida_xref.get_first_dref_from(ea)
+    while xref != BADADDR:
+        yield xref
+        xref = ida_xref.get_next_dref_from(ea, xref)
+
+
 def enum_crefs_to(ea):
     xref = ida_xref.get_first_cref_to(ea)
     while xref != BADADDR:
         yield xref
         xref = ida_xref.get_next_cref_to(ea, xref)
+
+
+def enum_crefs_from(ea):
+    xref = ida_xref.get_first_cref_from(ea)
+    while xref != BADADDR:
+        yield xref
+        xref = ida_xref.get_next_cref_from(ea, xref)
 
 
 def get_typeinf(typestr):
