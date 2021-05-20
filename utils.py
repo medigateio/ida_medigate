@@ -21,7 +21,7 @@ import idc
 
 from idc import BADADDR
 
-MAX_MEMBERS_WITH_SAME_NAME = 250
+MAX_MEMBER_INDEX = 250
 
 def get_word_len():
     info = idaapi.get_inf_structure()
@@ -184,7 +184,7 @@ def add_to_struct(
             while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
                 new_member_name = "%s_%d" % (member_name, i)
                 i += 1
-                if i > MAX_MEMBERS_WITH_SAME_NAME:
+                if i > MAX_MEMBER_INDEX:
                     logging.debug("failed change name")
                     return
                 ret_val = ida_struct.set_member_name(struct, offset, new_member_name)
@@ -197,7 +197,7 @@ def add_to_struct(
         while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
             new_member_name = "%s_%d" % (member_name, i)
             i += 1
-            if i > MAX_MEMBERS_WITH_SAME_NAME:
+            if i > MAX_MEMBER_INDEX:
                 return
             ret_val = ida_struct.add_struc_member(
                 struct, new_member_name, offset, flag, mt, member_size
@@ -284,7 +284,7 @@ def set_member_name(struct, offset, new_name):
     while not ret_val:
         formatted_new_name = "%s_%d" % (new_name, i)
         i += 1
-        if i > MAX_MEMBERS_WITH_SAME_NAME:
+        if i > MAX_MEMBER_INDEX:
             return False
         ret_val = ida_struct.set_member_name(struct, offset, formatted_new_name)
     return True
