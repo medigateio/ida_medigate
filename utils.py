@@ -488,13 +488,13 @@ def get_enum_const_name(enum_name, const_value):
 
 
 def find_hex_string(start_ea, stop_ea, hex_string):
-    curr_ea = ida_search.find_binary(
+    ea = ida_search.find_binary(
         start_ea, stop_ea, hex_string, 16, ida_search.SEARCH_DOWN
     )
-    while curr_ea != BADADDR:
-        yield curr_ea
-        curr_ea = ida_search.find_binary(
-            curr_ea + len(hex_string), stop_ea, hex_string, 16, ida_search.SEARCH_DOWN
+    while ea != BADADDR:
+        yield ea
+        ea = ida_search.find_binary(
+            ea, stop_ea, hex_string, 16, ida_search.SEARCH_DOWN | ida_search.SEARCH_NEXT
         )
 
 
