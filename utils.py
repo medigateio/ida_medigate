@@ -306,7 +306,7 @@ def get_or_create_struct(struct_name):
 
 
 def get_signed_int(ea):
-    x = idaapi.get_dword(ea)
+    x = idc.get_wide_dword(ea)
     if x & (1 << 31):
         return ((1 << 32) - x) * (-1)
     return x
