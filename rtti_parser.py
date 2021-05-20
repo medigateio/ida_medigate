@@ -115,7 +115,7 @@ class RTTIParser(object):
 
     def find_vtables(self):
         is_vtable_found = False
-        for xref in utils.enum_drefs(self.typeinfo):
+        for xref in utils.enum_drefs_to(self.typeinfo):
             if self.try_parse_vtable(xref) is not None:
                 is_vtable_found = True
         if not is_vtable_found:

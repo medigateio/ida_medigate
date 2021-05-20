@@ -86,7 +86,7 @@ def get_funcs_list():
     raise Exception("Not implemented")
 
 
-def enum_drefs(ea):
+def enum_drefs_to(ea):
     xref = ida_xref.get_first_dref_to(ea)
     while xref != BADADDR:
         yield xref
