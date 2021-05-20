@@ -399,41 +399,44 @@ def get_curline_striped_from_viewer(viewer):
     return ida_lines.tag_remove(ida_kernwin.get_custom_viewer_curline(viewer, False))
 
 
-#TODO: refactor
-strings = None
+# strings dictionary significantly speads up string search in IDA database
+strings = None  # dict(str, StringItem)
 
 
-#TODO: refactor
 def refresh_strings():
     global strings
-    strings = idautils.Strings()
+    strings = {}
+    for i in idautils.Strings():
+        s = str(i)
+        if s not in strings:
+            strings[s] = [i]
+        else:
+            strings[s].append(i)
 
 
-#TODO: refactor
-def get_strings():
+def get_strings(s):
     if strings is None:
         refresh_strings()
-    return strings
+    return strings.get(s, [])
 
 
-#TODO: refactor
-def get_xrefs_for_string(s, filter_func=None):
+def get_strings_xrefs(s, filter_func=None):
     """filter_func(x,s) choose x if True for magic str (s)"""
     if filter_func is None:
 
         def filter_func(x, string):
             return str(x) == string
 
-    filtered_strings = filter(lambda x: filter_func(x, s), get_strings())
-    strings_xrefs = []
-    for s in filtered_strings:
-        xrefs = []
-        xref = ida_xref.get_first_dref_to(s.ea)
-        while xref != BADADDR:
-            xrefs.append(xref)
-            xref = ida_xref.get_next_dref_to(s.ea, xref)
-        strings_xrefs.append([str(s), xrefs])
-    return strings_xrefs
+    xrefs = set()
+    for i in get_strings(s):
+        xrefs |= set(enum_drefs_to(i.ea))
+
+    return list(xrefs)
+
+
+def get_funcs_with_string(s):
+    funcs = set(map(ida_funcs.get_func, get_strings_xrefs(s)))
+    return list(funcs - {None})
 
 
 def get_func_ea(func_name):
@@ -441,23 +444,6 @@ def get_func_ea(func_name):
     if func is None:
         return BADADDR
     return func.start_ea
-
-
-#TODO: refactor
-def get_funcs_contains_string(s):
-    def filter_func(x, string):
-        return string in str(x)
-
-    strings_xrefs = get_xrefs_for_string(s, filter_func)
-    strings_funcs = []
-    for found_str, xrefs in strings_xrefs:
-        funcs = set()
-        for xref in xrefs:
-            contained_func = ida_funcs.get_func(xref)
-            if contained_func is not None:
-                funcs.add(contained_func)
-        strings_funcs.append([found_str, funcs])
-    return strings_funcs
 
 
 def batchmode(func):
