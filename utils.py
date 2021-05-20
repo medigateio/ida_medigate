@@ -226,11 +226,12 @@ def deref_tinfo(tinfo):
     return tinfo.get_pointed_object()
 
 
-def get_struc_from_tinfo(struct_tinfo):
+def is_struct_or_union(tinfo):
+    return tinfo.is_struct() or tinfo.is_union()
 
-    if ida_hexrays.init_hexrays_plugin() and (
-        not (struct_tinfo.is_struct() or struct_tinfo.is_union())
-    ):
+
+def get_struc_from_tinfo(struct_tinfo):
+    if not is_struct_or_union(struct_tinfo):
         return None
     struct_id = ida_struct.get_struc_id(struct_tinfo.get_type_name())
     if struct_id == BADADDR:
