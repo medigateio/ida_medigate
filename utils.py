@@ -514,18 +514,6 @@ def force_make_struct(ea, struct_name):
     return ida_bytes.create_struct(ea, size, sid)
 
 
-@batchmode
-def set_name_retry(ea, name, name_func=ida_name.set_name, max_attempts=100):
-    i = 0
-    suggested_name = name
-    while not name_func(ea, suggested_name):
-        suggested_name = name + "_" + str(i)
-        i += 1
-        if i == max_attempts:
-            return None
-    return suggested_name
-
-
 def add_struc_retry(name, max_attempts=100):
     i = 0
     suggested_name = name

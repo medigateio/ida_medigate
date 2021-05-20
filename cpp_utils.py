@@ -452,7 +452,11 @@ def update_vtable_struct(
         parent_name = ida_struct.get_struc_name(parent.id)
         if parent_name == class_name:
             parent_name = None
-    utils.set_name_retry(vtable_head, get_vtable_instance_name(class_name, parent_name))
+    idc.set_name(
+        vtable_head,
+        get_vtable_instance_name(class_name, parent_name),
+        ida_name.SN_CHECK | ida_name.SN_FORCE,
+    )
 
 
 def is_valid_func_char(c):
