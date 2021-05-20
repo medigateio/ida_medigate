@@ -378,20 +378,24 @@ def get_curline_striped_from_viewer(viewer):
     return ida_lines.tag_remove(ida_kernwin.get_custom_viewer_curline(viewer, False))
 
 
+#TODO: refactor
 strings = None
 
 
+#TODO: refactor
 def refresh_strings():
     global strings
     strings = idautils.Strings()
 
 
+#TODO: refactor
 def get_strings():
     if strings is None:
         refresh_strings()
     return strings
 
 
+#TODO: refactor
 def get_xrefs_for_string(s, filter_func=None):
     """filter_func(x,s) choose x if True for magic str (s)"""
     if filter_func is None:
@@ -412,13 +416,14 @@ def get_xrefs_for_string(s, filter_func=None):
 
 
 def get_func_ea_by_name(name):
-    loc = idc.get_name_ea_simple(name)
-    func = ida_funcs.get_func(loc)
+    ea = idc.get_name_ea_simple(name)
+    func = ida_funcs.get_func(ea)
     if func is None:
         return BADADDR
     return func.start_ea
 
 
+#TODO: refactor
 def get_funcs_contains_string(s):
     def filter_func(x, string):
         return string in str(x)
@@ -446,7 +451,7 @@ def batchmode(func):
     return wrapper
 
 
-def get_code_xrefs(ea):
+def enum_crefs_to(ea):
     xref = ida_xref.get_first_cref_to(ea)
     while xref != BADADDR:
         yield xref
