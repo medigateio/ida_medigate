@@ -499,12 +499,19 @@ def find_hex_string(start_ea, stop_ea, hex_string):
 
 
 def force_make_struct(ea, struct_name):
-    sptr = get_sptr_by_name(struct_name)
-    if sptr == BADADDR:
+    """@return: True on success, False on failure"""
+    sid = idc.get_struc_id(struct_name)
+    if sid == BADADDR:
+        logging.warn("Structure not found: %s", struct_name)
         return False
-    s_size = ida_struct.get_struc_size(sptr)
-    ida_bytes.del_items(ea, ida_bytes.DELIT_SIMPLE, s_size)
-    return ida_bytes.create_struct(ea, s_size, sptr.id)
+    size = idc.get_struc_size(sid)
+    if not size:
+        logging.warn("Structure with zero size: %s", struct_name)
+        return False
+    if not ida_bytes.del_items(ea, ida_bytes.DELIT_SIMPLE, size):
+        logging.warn("Failed to delete structure items: %s", struct_name)
+        return False
+    return ida_bytes.create_struct(ea, size, sid)
 
 
 @batchmode
