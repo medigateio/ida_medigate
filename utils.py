@@ -265,8 +265,8 @@ def get_member_tinfo(member):
 
 
 def get_sptr_by_name(struct_name):
-    s_id = ida_struct.get_struc_id(struct_name)
-    return ida_struct.get_struc(s_id)
+    sid = idc.get_struc_id(struct_name)
+    return ida_struct.get_struc(sid)
 
 
 def get_member_substruct(member):
