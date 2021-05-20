@@ -231,6 +231,8 @@ def is_struct_or_union(tinfo):
 
 
 def get_struc_from_tinfo(struct_tinfo):
+    if not struct_tinfo:
+        return None
     if not is_struct_or_union(struct_tinfo):
         return None
     struct_id = ida_struct.get_struc_id(struct_tinfo.get_type_name())
@@ -254,10 +256,11 @@ def extract_struct_from_tinfo(tinfo):
     return struct
 
 
-def get_member_tinfo(member, member_typeinf=None):
-    if member_typeinf is None:
-        member_typeinf = idaapi.tinfo_t()
-    ida_struct.get_member_tinfo(member_typeinf, member)
+def get_member_tinfo(member):
+    member_typeinf = idaapi.tinfo_t()
+    if not ida_struct.get_member_tinfo(member_typeinf, member):
+        logging.warn("Couldn't get member type info")
+        return None
     return member_typeinf
 
 
