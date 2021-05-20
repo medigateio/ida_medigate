@@ -550,4 +550,5 @@ def refresh_struct(sptr):
 
 
 def get_tempdir():
+    # In OSX Darwin tempfile.gettempdir() returns private user temp dir, instead of /tmp
     return "/tmp" if platform.system() == "Darwin" else tempfile.gettempdir()
