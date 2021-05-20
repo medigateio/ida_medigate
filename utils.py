@@ -141,6 +141,7 @@ def update_func_details(func_ea, func_details):
     return function_tinfo
 
 
+# TODO: refactor
 def add_to_struct(
     struct,
     member_name,
@@ -312,6 +313,7 @@ def get_signed_int(ea):
     return x
 
 
+# TODO: refactor
 def expand_struct(struct_id, new_size):
     struct = ida_struct.get_struc(struct_id)
     if struct is None:
@@ -373,9 +375,7 @@ def expand_struct(struct_id, new_size):
 
 
 def get_curline_striped_from_viewer(viewer):
-    line = ida_kernwin.get_custom_viewer_curline(viewer, False)
-    line = ida_lines.tag_remove(line)
-    return line
+    return ida_lines.tag_remove(ida_kernwin.get_custom_viewer_curline(viewer, False))
 
 
 strings = None
