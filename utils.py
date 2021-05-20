@@ -288,11 +288,13 @@ def set_member_name(struct, offset, new_name):
 
 
 def get_or_create_struct_id(struct_name, is_union=False):
-    struct_id = ida_struct.get_struc_id(struct_name)
-    if struct_id != BADADDR:
-        return struct_id
-    struct_id = ida_struct.add_struc(BADADDR, struct_name, is_union)
-    return struct_id
+    """
+    @return: struct id or BADADDR if couldn't create struct
+    """
+    sid = idc.get_struc_id(struct_name)
+    if sid != BADADDR:
+        return sid
+    return idc.add_struc(-1, struct_name, is_union)
 
 
 def get_or_create_struct(struct_name):
