@@ -478,11 +478,11 @@ def get_enum_const_name(enum_name, const_value):
         return ""
     enum_id = idc.get_enum(enum_name)
     if enum_id == BADADDR:
-        logging.warn("Enum not found %s" % enum_name)
+        logging.warn("Enum not found %s", enum_name)
         return ""
     const_id = idc.get_enum_member(enum_id, const_value, 0, ida_enum.DEFMASK)
     if const_id == BADADDR:
-        logging.warn("Enum const not found %s, %X" % (enum_name, const_value))
+        logging.warn("Enum const not found %s, %X", enum_name, const_value)
         return ""
     return idc.get_enum_member_name(const_id)
 
@@ -553,10 +553,10 @@ def refresh_struct(sptr):
         return False
     member_ptr = add_to_struct(sptr, "dummy")
     if not member_ptr:
-        logging.warn("Failed to add dummy field to struct %d" % sptr.id)
+        logging.warn("Failed to add dummy field to struct %d", sptr.id)
         return False
     if not ida_struct.del_struc_member(sptr, member_ptr.soff):
-        logging.error("Failed to delete dummy member at the end of struct %d" % sptr.id)
+        logging.error("Failed to delete dummy member at the end of struct %d", sptr.id)
         return False
     return True
 
