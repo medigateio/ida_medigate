@@ -535,9 +535,17 @@ def get_selected_range_or_line():
 
 
 def refresh_struct(sptr):
-    #  Hack: need to refresh structure so MF_BASECLASS will be updated
+    #  Hack: the only way to update MF_BASECLASS is to add dummy field at the end of the struct
+    if not sptr:
+        return False
     member_ptr = add_to_struct(sptr, "dummy")
-    ida_struct.del_struc_member(sptr, member_ptr.soff)
+    if not member_ptr:
+        logging.warn("Failed to add dummy field to struct %d" % sptr.id)
+        return False
+    if not ida_struct.del_struc_member(sptr, member_ptr.soff):
+        logging.error("Failed to delete dummy member at the end of struct %d" % sptr.id)
+        return False
+    return True
 
 
 def get_tempdir():
