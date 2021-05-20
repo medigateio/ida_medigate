@@ -272,8 +272,7 @@ def get_sptr_by_name(struct_name):
 def get_member_substruct(member):
     member_type = get_member_tinfo(member)
     if member_type is not None and member_type.is_struct():
-        current_struct_id = ida_struct.get_struc_id(member_type.get_type_name())
-        return ida_struct.get_struc(current_struct_id)
+        return get_sptr_by_name(member_type.get_type_name())
     elif member.flag & idaapi.FF_STRUCT == idaapi.FF_STRUCT:
         return ida_struct.get_sptr(member)
     return None
