@@ -526,10 +526,10 @@ def refresh_struct(sptr):
         return False
     member_ptr = add_to_struct(sptr, "dummy")
     if not member_ptr:
-        logging.warn("Failed to add dummy field to struct %d", sptr.id)
+        logging.warn("Failed to add dummy field to struct 0x%X", sptr.id)
         return False
     if not ida_struct.del_struc_member(sptr, member_ptr.soff):
-        logging.error("Failed to delete dummy member at the end of struct %d", sptr.id)
+        logging.error("Failed to delete dummy member at the end of struct 0x%X", sptr.id)
         return False
     return True
 
