@@ -338,10 +338,10 @@ def get_signed_int(ea):
 def expand_struct(struct_id, new_size):
     struct = ida_struct.get_struc(struct_id)
     if struct is None:
-        logging.warning("Struct id 0x%x wasn't found", struct_id)
+        logging.warning("Struct id 0x%X wasn't found", struct_id)
         return
     logging.debug(
-        "Expanding struc %s 0x%x -> 0x%x",
+        "Expanding struc %s, size: 0x%X -> 0x%X",
         ida_struct.get_struc_name(struct_id),
         ida_struct.get_struc_size(struct_id),
         new_size,
@@ -366,7 +366,7 @@ def expand_struct(struct_id, new_size):
                     0,
                 )
                 logging.debug(
-                    "Delete member (0x%x-0x%x)", member.soff, member.soff + new_size - 1
+                    "Delete member (0x%X-0x%X)", member.soff, member.soff + new_size - 1
                 )
                 ida_struct.del_struc_members(
                     x_struct, member.soff, member.soff + new_size - 1
@@ -382,7 +382,7 @@ def expand_struct(struct_id, new_size):
                     ]
                 )
             else:
-                logging.warning("Xref wasn't struct_member 0x%x", xref.frm)
+                logging.warning("Xref 0x%X wasn't struct_member", xref.frm)
 
     ret = add_to_struct(
         ida_struct.get_struc(struct_id), None, None, new_size - WORD_LEN
