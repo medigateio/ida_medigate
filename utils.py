@@ -298,6 +298,9 @@ def get_or_create_struct_id(struct_name, is_union=False):
 
 
 def get_or_create_struct(struct_name):
+    """
+    @return: struct ptr or None if couldn't create struct
+    """
     struct_id = get_or_create_struct_id(struct_name)
     return ida_struct.get_struc(struct_id)
 
