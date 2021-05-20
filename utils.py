@@ -436,12 +436,9 @@ def batchmode(func):
     def wrapper(*args, **kwargs):
         old_batch = idc.batch(1)
         try:
-            val = func(*args, **kwargs)
-        except Exception:
-            raise
+            return func(*args, **kwargs)
         finally:
             idc.batch(old_batch)
-        return val
 
     return wrapper
 
