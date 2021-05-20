@@ -279,15 +279,12 @@ def get_member_substruct(member):
 
 
 def set_member_name(struct, offset, new_name):
-    i = 0
-    ret_val = ida_struct.set_member_name(struct, offset, new_name)
-    while not ret_val:
-        formatted_new_name = "%s_%d" % (new_name, i)
-        i += 1
-        if i > MAX_MEMBER_INDEX:
-            return False
-        ret_val = ida_struct.set_member_name(struct, offset, formatted_new_name)
-    return True
+    if ida_struct.set_member_name(struct, offset, new_name):
+        return True
+    for i in range(MAX_MEMBER_INDEX):
+        if ida_struct.set_member_name(struct, offset, new_name + "_%d" % i):
+            return True
+    return False
 
 
 def get_or_create_struct_id(struct_name, is_union=False):
