@@ -93,6 +93,13 @@ def enum_drefs_to(ea):
         xref = ida_xref.get_next_dref_to(ea, xref)
 
 
+def enum_crefs_to(ea):
+    xref = ida_xref.get_first_cref_to(ea)
+    while xref != BADADDR:
+        yield xref
+        xref = ida_xref.get_next_cref_to(ea, xref)
+
+
 def get_typeinf(typestr):
     if not typestr:
         # Passing None to tinfo_t.get_named_type() can crash IDA
@@ -449,13 +456,6 @@ def batchmode(func):
             idc.batch(old_batch)
 
     return wrapper
-
-
-def enum_crefs_to(ea):
-    xref = ida_xref.get_first_cref_to(ea)
-    while xref != BADADDR:
-        yield xref
-        xref = ida_xref.get_next_cref_to(ea, xref)
 
 
 def get_enum_const_name(enum_name, const_val):
