@@ -436,9 +436,8 @@ def get_xrefs_for_string(s, filter_func=None):
     return strings_xrefs
 
 
-def get_func_ea_by_name(name):
-    ea = idc.get_name_ea_simple(name)
-    func = ida_funcs.get_func(ea)
+def get_func_ea(func_name):
+    func = ida_funcs.get_func(idc.get_name_ea_simple(func_name))
     if func is None:
         return BADADDR
     return func.start_ea

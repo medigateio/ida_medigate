@@ -66,7 +66,7 @@ def get_call_from_insn(insn):
 def run_operation_on_func_xrefs(func_name, operation, exception_msg=None):
     if exception_msg is None:
         exception_msg = "exception in %s xrefs" % func_name
-    ea = utils.get_func_ea_by_name(func_name)
+    ea = utils.get_func_ea(func_name)
     for xref in utils.enum_crefs_to(ea):
         try:
             insn = get_insn(xref)
