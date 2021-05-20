@@ -75,9 +75,10 @@ class RTTIParser(object):
         self.struct_ptr = None
 
     def create_structs(self):
-        self.name, self.struct_id = utils.add_struc_retry(self.name)
-        if self.struct_id == BADADDR or self.name is None:
+        self.struct_id = utils.add_struc_retry(self.name)
+        if self.struct_id == BADADDR:
             return False
+        self.name = idc.get_struc_name(self.struct_id)
         self.struct_ptr = ida_struct.get_struc(self.struct_id)
         if self.struct_ptr is None:
             logging.exception("self.struct_ptr is None at %s", self.name)

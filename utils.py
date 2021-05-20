@@ -514,17 +514,17 @@ def force_make_struct(ea, struct_name):
     return ida_bytes.create_struct(ea, size, sid)
 
 
-def add_struc_retry(name, max_attempts=100):
-    i = 0
-    suggested_name = name
-    sid = ida_struct.add_struc(BADADDR, suggested_name)
-    while sid == BADADDR:
-        suggested_name = name + "_" + str(i)
-        sid = ida_struct.add_struc(BADADDR, suggested_name)
-        i += 1
-        if i == max_attempts:
-            return None, sid
-    return suggested_name, sid
+def add_struc_retry(name, max_attempts=100, is_union=False):
+    """@return structure id on success or BADADDR on failure"""
+    sid = idc.add_struc(-1, name, is_union)
+    if sid != BADADDR:
+        return sid
+    for i in range(max_attempts):
+        suggested_name = "%s_%i" % (name, i)
+        sid = idc.add_struc(-1, suggested_name, is_union)
+        if sid != BADADDR:
+            return sid
+    return BADADDR
 
 
 def get_selected_range_or_line():
