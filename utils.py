@@ -472,13 +472,19 @@ def batchmode(func):
     return wrapper
 
 
-def get_enum_const_name(enum_name, const_val):
-    enum = ida_enum.get_enum(enum_name)
-    if enum != BADADDR:
-        const = ida_enum.get_const(enum, const_val, 0, BADADDR)
-        if const != BADADDR:
-            return ida_enum.get_const_name(const)
-    return None
+def get_enum_const_name(enum_name, const_value):
+    """ Name of the constant value of the enum or empty string if enum or const does not exist """
+    if not enum_name:
+        return ""
+    enum_id = idc.get_enum(enum_name)
+    if enum_id == BADADDR:
+        logging.warn("Enum not found %s" % enum_name)
+        return ""
+    const_id = idc.get_enum_member(enum_id, const_value, 0, ida_enum.DEFMASK)
+    if const_id == BADADDR:
+        logging.warn("Enum const not found %s, %X" % (enum_name, const_value))
+        return ""
+    return idc.get_enum_member_name(const_id)
 
 
 def find_hex_string(start_ea, stop_ea, hex_string):
