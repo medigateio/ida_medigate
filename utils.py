@@ -219,10 +219,11 @@ def set_func_name(func_ea, new_name):
 
 
 def deref_tinfo(tinfo):
-    pointed_obj = None
-    if tinfo.is_ptr():
-        pointed_obj = tinfo.get_pointed_object()
-    return pointed_obj
+    if not tinfo:
+        return None
+    if not tinfo.is_ptr():
+        return None
+    return tinfo.get_pointed_object()
 
 
 def get_struc_from_tinfo(struct_tinfo):
