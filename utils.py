@@ -86,28 +86,28 @@ def get_funcs_list():
     raise Exception("Not implemented")
 
 
-def enum_drefs_to(ea):
+def drefs_to(ea):
     xref = ida_xref.get_first_dref_to(ea)
     while xref != BADADDR:
         yield xref
         xref = ida_xref.get_next_dref_to(ea, xref)
 
 
-def enum_drefs_from(ea):
+def drefs_from(ea):
     xref = ida_xref.get_first_dref_from(ea)
     while xref != BADADDR:
         yield xref
         xref = ida_xref.get_next_dref_from(ea, xref)
 
 
-def enum_crefs_to(ea):
+def crefs_to(ea):
     xref = ida_xref.get_first_cref_to(ea)
     while xref != BADADDR:
         yield xref
         xref = ida_xref.get_next_cref_to(ea, xref)
 
 
-def enum_crefs_from(ea):
+def crefs_from(ea):
     xref = ida_xref.get_first_cref_from(ea)
     while xref != BADADDR:
         yield xref
@@ -429,7 +429,7 @@ def get_strings_xrefs(s, filter_func=None):
 
     xrefs = set()
     for i in get_strings(s):
-        xrefs |= set(enum_drefs_to(i.ea))
+        xrefs |= set(drefs_to(i.ea))
 
     return list(xrefs)
 
