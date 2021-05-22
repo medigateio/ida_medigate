@@ -7,7 +7,6 @@ import traceback
 
 import idaapi
 
-logging.basicConfig(level=logging.WARN)
 log = logging.getLogger("referee")
 
 

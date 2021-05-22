@@ -17,12 +17,6 @@ class RTTIParser(object):
 
     @classmethod
     def init_parser(cls):
-        logging.basicConfig(
-            filename=os.path.join(utils.get_tempdir(), "cpp_plugin.log"),
-            filemode="a",
-            level=logging.DEBUG,
-            format="%(asctime)s %(levelname)s %(message)s",
-        )
         cls.found_classes = set()
 
     @classmethod

@@ -14,14 +14,6 @@ from idc import BADADDR
 from .. import cpp_utils, utils
 
 
-logging.basicConfig(
-    filename=os.path.join(utils.get_tempdir(), "cpp_plugin.log"),
-    filemode="a",
-    level=logging.DEBUG,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
-
-
 class CPPHooks(ida_idp.IDB_Hooks):
     def __init__(self, is_decompiler_on):
         super(CPPHooks, self).__init__()
