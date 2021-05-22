@@ -284,7 +284,7 @@ def update_func_this(func_ea, this_type=None):
         if func_details is None:
             return None
         if this_type:
-            if len(func_details) > 0:
+            if func_details:
                 func_details[0].name = "this"
                 func_details[0].type = this_type
         functype = utils.update_func_details(func_ea, func_details)
@@ -352,7 +352,7 @@ def post_func_type_change(pfn):
     xrefs = idautils.XrefsTo(ea, ida_xref.XREF_USER)
     xrefs = list(filter(lambda x: x.type == ida_xref.dr_I and x.user == 1, xrefs))
     args_list = []
-    if len(xrefs) == 0:
+    if not xrefs:
         return None, []
     try:
         xfunc = ida_hexrays.decompile(ea)

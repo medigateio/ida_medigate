@@ -118,7 +118,7 @@ class RTTIParser(object):
                 "find_vtable(%s): Couldn't find any vtable ->" " Interface!",
                 self.name,
             )
-            if len(self.updated_parents) == 0:
+            if not self.updated_parents:
                 cpp_utils.install_vtables_union(self.name)
                 pass
 
