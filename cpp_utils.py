@@ -315,7 +315,7 @@ def add_class_vtable(struct_ptr, vtable_name, offset=BADADDR, vtable_field_name=
 @batchmode
 def post_func_name_change(new_name, ea):
     xrefs = idautils.XrefsTo(ea, ida_xref.XREF_USER)
-    xrefs = filter(lambda x: x.type == ida_xref.dr_I and x.user == 1, xrefs)
+    xrefs = [xref for xref in xrefs if xref.type == ida_xref.dr_I and xref.user == 1]
     args_list = []
     for xref in xrefs:
         member, _, struct = ida_struct.get_member_by_id(xref.frm)
@@ -327,7 +327,7 @@ def post_func_name_change(new_name, ea):
 
 def post_struct_member_name_change(member, new_name):
     xrefs = idautils.XrefsFrom(member.id)
-    xrefs = filter(lambda x: x.type == ida_xref.dr_I and x.user == 1, xrefs)
+    xrefs = [xref for xref in xrefs if xref.type == ida_xref.dr_I and xref.user == 1]
     for xref in xrefs:
         if utils.is_func_start(xref.to):
             utils.set_func_name(xref.to, new_name)
@@ -335,7 +335,7 @@ def post_struct_member_name_change(member, new_name):
 
 def post_struct_member_type_change(member):
     xrefs = idautils.XrefsFrom(member.id)
-    xrefs = filter(lambda x: x.type == ida_xref.dr_I and x.user == 1, xrefs)
+    xrefs = [xref for xref in xrefs if xref.type == ida_xref.dr_I and xref.user == 1]
     for xref in xrefs:
         if utils.is_func_start(xref.to):
             function_ptr_tinfo = idaapi.tinfo_t()
@@ -350,7 +350,7 @@ def post_struct_member_type_change(member):
 def post_func_type_change(pfn):
     ea = pfn.start_ea
     xrefs = idautils.XrefsTo(ea, ida_xref.XREF_USER)
-    xrefs = list(filter(lambda x: x.type == ida_xref.dr_I and x.user == 1, xrefs))
+    xrefs = [xref for xref in xrefs if xref.type == ida_xref.dr_I and xref.user == 1]
     args_list = []
     if not xrefs:
         return None, []
