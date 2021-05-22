@@ -167,7 +167,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         vtable_struct_name = ida_struct.get_struc_name(vtable_sptr.id)
         try:
             funcptr_member = ida_struct.get_member(vtable_sptr, offset)
-        except TypeError as e:
+        except TypeError:
             log.exception("%08X: bad offset: 0x%X", self.cfunc.entry_ea, offset)
             return None
 

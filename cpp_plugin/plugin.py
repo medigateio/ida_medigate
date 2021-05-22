@@ -98,7 +98,7 @@ class CPPPlugin(ida_idaapi.plugin_t):
     @classmethod
     def description(cls):
         """Return the description displayed in the console."""
-        return "%s v%s".format(cls.PLUGIN_NAME, cls.PLUGIN_VERSION)
+        return "%s v%s" % (cls.PLUGIN_NAME, cls.PLUGIN_VERSION)
 
     def run(self, _):
         """

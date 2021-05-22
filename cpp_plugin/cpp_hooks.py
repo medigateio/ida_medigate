@@ -3,7 +3,6 @@ import ida_frame
 import ida_funcs
 import ida_idp
 import ida_struct
-from idc import BADADDR
 from .. import cpp_utils, utils
 
 log = logging.getLogger("ida_medigate")
