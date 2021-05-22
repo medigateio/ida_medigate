@@ -1,5 +1,4 @@
 import logging
-import os
 import ida_frame
 import ida_funcs
 import ida_hexrays
