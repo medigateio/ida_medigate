@@ -34,7 +34,6 @@ class CPPPlugin(ida_idaapi.plugin_t):
     wanted_hotkey = ""
 
     def __init__(self):
-        log.info("Im up")
         self.core_hook = None
         self.gui_hook = None
         self.hooking = False
@@ -45,17 +44,23 @@ class CPPPlugin(ida_idaapi.plugin_t):
         This method is called when IDA is loading the plugin. It will first
         load the configuration file, then initialize all the modules.
         """
-        if not idaapi.init_hexrays_plugin():
-            log.warn("Hex-Rays decompiler is not available. Some functions will not work.")
-        else:
+        if idaapi.init_hexrays_plugin():
             self.is_decompiler_on = True
+        else:
+            log.warn("Hex-Rays decompiler is not available")
+
         self.core_hook = CPPHooks(self.is_decompiler_on)
         self.gui_hook = CPPUIHooks()
+
         if not self.hook():
             log.warn("Failed to set hooks")
             return idaapi.PLUGIN_SKIP
+
         if not self.install_hotkey():
             log.warn("Failed to add hotkey")
+
+        log.info("Im up")
+
         return idaapi.PLUGIN_KEEP
 
     def toggle_hooks(self):
@@ -73,7 +78,6 @@ class CPPPlugin(ida_idaapi.plugin_t):
             log.warn("Failed to install core hooks")
         if not self.gui_hook.hook():
             log.warn("Failed to install gui hooks")
-        log.info("hooks installed")
         self.hooking = True
         return True
 
@@ -85,7 +89,6 @@ class CPPPlugin(ida_idaapi.plugin_t):
             log.warn("Failed to remove core hooks")
         if not self.gui_hook.unhook():
             log.warn("Failed to remove gui hooks")
-        log.info("hooks removed")
         self.hooking = False
         return True
 
@@ -109,6 +112,5 @@ class CPPPlugin(ida_idaapi.plugin_t):
         This method is called when IDA is unloading the plugin. It will
         terminated all the modules, then save the configuration file.
         """
-        log.debug("terminating")
         self.unhook()
         idaapi.term_hexrays_plugin()
