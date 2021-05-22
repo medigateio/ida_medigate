@@ -44,9 +44,7 @@ class RTTIParser(object):
             else:
                 built_rtti_obj_name = ida_name.get_ea_name(parent_typeinfo)
                 if built_rtti_obj_name.endswith(cls.RTTI_OBJ_STRUC_NAME):
-                    parent_updated_name = built_rtti_obj_name.rstrip(
-                        "_" + cls.RTTI_OBJ_STRUC_NAME
-                    )
+                    parent_updated_name = built_rtti_obj_name.rstrip("_" + cls.RTTI_OBJ_STRUC_NAME)
             if parent_updated_name is not None:
                 rtti_obj.updated_parents.append((parent_updated_name, offset))
 
@@ -86,7 +84,8 @@ class RTTIParser(object):
                 and previous_parent_struct_id != BADADDR
             ):
                 utils.expand_struct(
-                    previous_parent_struct_id, parent_offset - previous_parent_offset
+                    previous_parent_struct_id,
+                    parent_offset - previous_parent_offset,
                 )
             baseclass_id = ida_struct.get_struc_id(parent_name)
             baseclass_size = ida_struct.get_struc_size(baseclass_id)
@@ -116,7 +115,8 @@ class RTTIParser(object):
                 is_vtable_found = True
         if not is_vtable_found:
             log.debug(
-                "find_vtable(%s): Couldn't find any vtable ->" " Interface!", self.name
+                "find_vtable(%s): Couldn't find any vtable ->" " Interface!",
+                self.name,
             )
             if len(self.updated_parents) == 0:
                 cpp_utils.install_vtables_union(self.name)
@@ -172,15 +172,9 @@ class GccRTTIParser(RTTIParser):
     @classmethod
     def init_parser(cls):
         super(GccRTTIParser, cls).init_parser()
-        cls.type_vmi = (
-            ida_name.get_name_ea(idaapi.BADADDR, cls.VMI) + cls.OFFSET_FROM_TYPEINF_SYM
-        )
-        cls.type_si = (
-            ida_name.get_name_ea(idaapi.BADADDR, cls.SI) + cls.OFFSET_FROM_TYPEINF_SYM
-        )
-        cls.type_none = (
-            ida_name.get_name_ea(idaapi.BADADDR, cls.NONE) + cls.OFFSET_FROM_TYPEINF_SYM
-        )
+        cls.type_vmi = ida_name.get_name_ea(idaapi.BADADDR, cls.VMI) + cls.OFFSET_FROM_TYPEINF_SYM
+        cls.type_si = ida_name.get_name_ea(idaapi.BADADDR, cls.SI) + cls.OFFSET_FROM_TYPEINF_SYM
+        cls.type_none = ida_name.get_name_ea(idaapi.BADADDR, cls.NONE) + cls.OFFSET_FROM_TYPEINF_SYM
         cls.types = (cls.type_vmi, cls.type_si, cls.type_none)
 
     @classmethod
@@ -234,22 +228,14 @@ class GccRTTIParser(RTTIParser):
 
     @classmethod
     def parse_vmi_typeinfo(cls, typeinfo_ea):
-        base_classes_num = idaapi.get_32bit(
-            typeinfo_ea + cls.VMI_TYPEINFO_BASE_CLASSES_NUM_OFFSET
-        )
+        base_classes_num = idaapi.get_32bit(typeinfo_ea + cls.VMI_TYPEINFO_BASE_CLASSES_NUM_OFFSET)
         parents = []
         for i in range(base_classes_num):
             base_class_desc_ea = (
-                typeinfo_ea
-                + cls.VMI_TYPEINFO_BASE_CLASSES_OFFSET
-                + i * cls.BASE_CLASS_SIZE
+                typeinfo_ea + cls.VMI_TYPEINFO_BASE_CLASSES_OFFSET + i * cls.BASE_CLASS_SIZE
             )
-            parent_typeinfo_ea = utils.get_ptr(
-                base_class_desc_ea + cls.BASE_CLASS_TYPEINFO_OFFSET
-            )
-            parent_attrs = utils.get_word(
-                base_class_desc_ea + cls.BASE_CLASS_ATTRS_OFFSET
-            )
+            parent_typeinfo_ea = utils.get_ptr(base_class_desc_ea + cls.BASE_CLASS_TYPEINFO_OFFSET)
+            parent_attrs = utils.get_word(base_class_desc_ea + cls.BASE_CLASS_ATTRS_OFFSET)
             parent_offset_in_cls = parent_attrs >> 8
             parents.append((parent_typeinfo_ea, parent_offset_in_cls))
         return parents

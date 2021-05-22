@@ -80,7 +80,10 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
 
     def get_ancestors(self):
         vtable_expr = self.parents.back().cexpr
-        if vtable_expr.op not in (ida_hexrays.cot_memptr, ida_hexrays.cot_memref):
+        if vtable_expr.op not in (
+            ida_hexrays.cot_memptr,
+            ida_hexrays.cot_memref,
+        ):
             return None
 
         if self.parents.size() < 2:
@@ -118,7 +121,10 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
                 log.debug("funcptr_parent isn't expr")
                 return None
             funcptr_parent = funcptr_parent.cexpr
-        if funcptr_expr.op not in (ida_hexrays.cot_memptr, ida_hexrays.cot_memref):
+        if funcptr_expr.op not in (
+            ida_hexrays.cot_memptr,
+            ida_hexrays.cot_memref,
+        ):
 
             log.debug("funcptr_expr isn't -> (%s)", funcptr_expr.opname)
             return None
@@ -140,7 +146,9 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
             num = idx_cexpr.y.get_const_value()
             if not (idx_cexpr.type and idx_cexpr.type.is_struct()):
                 log.debug(
-                    "0x%x idx type isn't struct %s", self.cfunc.entry_ea, idx_cexpr.type
+                    "0x%x idx type isn't struct %s",
+                    self.cfunc.entry_ea,
+                    idx_cexpr.type,
                 )
                 return -1
             idx_struct = utils.get_struc_from_tinfo(idx_cexpr.type)
@@ -195,9 +203,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         offset = self.fix_member_idx(idx_cexpr)
         if offset == -1:
             return None
-        funcptr_member_type = self.get_vtable_member_type(
-            vtable_sptr, funcptr_expr.m + offset
-        )
+        funcptr_member_type = self.get_vtable_member_type(vtable_sptr, funcptr_expr.m + offset)
         return funcptr_member_type
 
     def dump_expr(self, e):

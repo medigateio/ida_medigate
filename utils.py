@@ -25,6 +25,7 @@ log = logging.getLogger("ida_medigate")
 
 MAX_MEMBER_INDEX = 250
 
+
 def get_word_len():
     info = idaapi.get_inf_structure()
     if info.is_64bit():
@@ -184,7 +185,9 @@ def add_to_struct(
             mt = ida_nalt.opinfo_t()
             mt.tid = substruct.id
             log.debug(
-                "Is struct: %s/%d", ida_struct.get_struc_name(substruct.id), substruct.id,
+                "Is struct: %s/%d",
+                ida_struct.get_struc_name(substruct.id),
+                substruct.id,
             )
             member_size = ida_struct.get_struc_size(substruct.id)
     elif WORD_LEN == 4:
@@ -230,9 +233,7 @@ def add_to_struct(
             log.debug("ret_val: %d", ret_val)
         member_ptr = ida_struct.get_member_by_name(struct, new_member_name)
     if member_type is not None and member_ptr is not None:
-        ida_struct.set_member_tinfo(
-            struct, member_ptr, 0, member_type, idaapi.TINFO_DEFINITE
-        )
+        ida_struct.set_member_tinfo(struct, member_ptr, 0, member_type, idaapi.TINFO_DEFINITE)
     return member_ptr
 
 
@@ -368,11 +369,11 @@ def expand_struct(struct_id, new_size):
                     0,
                 )
                 log.debug(
-                    "Delete member (0x%X-0x%X)", member.soff, member.soff + new_size - 1
+                    "Delete member (0x%X-0x%X)",
+                    member.soff,
+                    member.soff + new_size - 1,
                 )
-                ida_struct.del_struc_members(
-                    x_struct, member.soff, member.soff + new_size - 1
-                )
+                ida_struct.del_struc_members(x_struct, member.soff, member.soff + new_size - 1)
                 fix_list.append(
                     [
                         x_struct.id,
@@ -386,9 +387,7 @@ def expand_struct(struct_id, new_size):
             else:
                 log.warning("Xref 0x%X wasn't struct_member", xref.frm)
 
-    ret = add_to_struct(
-        ida_struct.get_struc(struct_id), None, None, new_size - WORD_LEN
-    )
+    ret = add_to_struct(ida_struct.get_struc(struct_id), None, None, new_size - WORD_LEN)
     log.debug("Now fix args:")
     for fix_args in fix_list:
         ret = idc.add_struc_member(*fix_args)
@@ -475,13 +474,15 @@ def get_enum_const_name(enum_name, const_value):
 
 
 def find_hex_string(start_ea, stop_ea, hex_string):
-    ea = ida_search.find_binary(
-        start_ea, stop_ea, hex_string, 16, ida_search.SEARCH_DOWN
-    )
+    ea = ida_search.find_binary(start_ea, stop_ea, hex_string, 16, ida_search.SEARCH_DOWN)
     while ea != BADADDR:
         yield ea
         ea = ida_search.find_binary(
-            ea, stop_ea, hex_string, 16, ida_search.SEARCH_DOWN | ida_search.SEARCH_NEXT
+            ea,
+            stop_ea,
+            hex_string,
+            16,
+            ida_search.SEARCH_DOWN | ida_search.SEARCH_NEXT,
         )
 
 
