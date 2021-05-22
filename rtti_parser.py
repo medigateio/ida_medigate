@@ -180,7 +180,7 @@ class GccRTTIParser(RTTIParser):
     @classmethod
     def build_all(cls):
         for class_type in cls.types:
-            log.debug("Starting :%s %s" % (class_type, hex(class_type)))
+            log.debug("Starting :%s %s", class_type, hex(class_type))
             cls.build_class_type(class_type)
             log.info("Done %s", class_type)
 
