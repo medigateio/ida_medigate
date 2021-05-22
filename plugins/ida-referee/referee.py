@@ -218,14 +218,19 @@ class Referee(idaapi.plugin_t):
 
     def init(self):
         if not idaapi.init_hexrays_plugin():
+            log.error("Decompiler is not ready")
             return idaapi.PLUGIN_SKIP
 
-        idaapi.install_hexrays_callback(callback)
+        if not idaapi.install_hexrays_callback(callback):
+            log.error("Failed to install hexrays callback")
+            return idaapi.PLUGIN_SKIP
+
         log.info(
             "Hex-Rays version %s has been detected; %s is ready to use",
             idaapi.get_hexrays_version(),
             self.wanted_name,
         )
+
         self.inited = True
         return idaapi.PLUGIN_KEEP
 
@@ -235,7 +240,8 @@ class Referee(idaapi.plugin_t):
 
     def term(self):
         if self.inited:
-            idaapi.remove_hexrays_callback(callback)
+            if not idaapi.remove_hexrays_callback(callback):
+                log.warn("Failed to remove hexrays callback")
             idaapi.term_hexrays_plugin()
 
 
