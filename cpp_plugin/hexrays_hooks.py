@@ -255,17 +255,17 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
 def _on_maturity(cfunc, maturity):
     global _ANOTHER_DECOMPILER_EA
     if maturity not in [idaapi.CMAT_FINAL]:
-        return 0
+        return
     if _ANOTHER_DECOMPILER_EA:
         _ANOTHER_DECOMPILER_EA = None
-        return 0
+        return
     # if maturity in [idaapi.CMAT_CPA]:
     # if maturity in [idaapi.CPA]:
     pfv = Polymorphism_fixer_visitor_t(cfunc)
     pfv.apply_to_exprs(cfunc.body, None)
     log.debug("results: %s", pfv.selections)
     if pfv.selections == []:
-        return 0
+        return
     for ea, offset, funcptr_member_type in pfv.selections:
         intvec = idaapi.intvec_t()
         # TODO: Think if needed to distinguished between user
@@ -277,20 +277,18 @@ def _on_maturity(cfunc, maturity):
                 ida_nalt.set_op_tinfo(ea, 0, funcptr_member_type)
     cfunc.save_user_unions()
     _ANOTHER_DECOMPILER_EA = cfunc.entry_ea
-    return 0
 
 
 def _on_refresh_pseudocode(vu):
     global _ANOTHER_DECOMPILER_EA
     if not _ANOTHER_DECOMPILER_EA:
-        return 0
+        return
     log.debug("decompile again")
     ea = _ANOTHER_DECOMPILER_EA
     ida_hexrays.mark_cfunc_dirty(ea, False)
     cfunc = ida_hexrays.decompile(ea)
     _ANOTHER_DECOMPILER_EA = None
     vu.switch_to(cfunc, True)
-    return 0
 
 
 def _callback(*args):
@@ -301,6 +299,7 @@ def _callback(*args):
     elif args[0] == idaapi.hxe_refresh_pseudocode:
         vu = args[1]
         _on_refresh_pseudocode(vu)
+    return 0
 
 
 def install_hexrays_hook():
