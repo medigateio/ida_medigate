@@ -5,5 +5,3 @@ __pycache__/
 .DS_Store
 .python-version
 .pylintrc
-install.sh
-uninstall.sh
