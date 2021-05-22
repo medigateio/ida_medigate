@@ -198,7 +198,7 @@ class GccRTTIParser(RTTIParser):
                 continue
             try:
                 cls.extract_rtti_info_from_typeinfo(xref.frm)
-            except Exception as ex:
+            except Exception as ex:  # pylint: disable=broad-except
                 log.exception("Exception at %08X: %s", xref.frm, ex)
             idx += 1
 

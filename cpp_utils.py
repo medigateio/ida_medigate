@@ -361,7 +361,7 @@ def post_func_type_change(pfn):
             member, _, struct = ida_struct.get_member_by_id(xref.frm)
             if member is not None and struct is not None:
                 args_list.append([struct, member, 0, func_ptr_typeinf, idaapi.TINFO_DEFINITE])
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         pass
     return ida_struct.set_member_tinfo, args_list
 
