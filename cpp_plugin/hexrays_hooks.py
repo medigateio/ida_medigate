@@ -1,89 +1,15 @@
 import logging
-import ida_frame
-import ida_funcs
 import ida_hexrays
-import ida_idp
-import ida_kernwin
 import ida_nalt
-import ida_name
 import ida_struct
 import idaapi
-import idc
 from idc import BADADDR
 from .. import cpp_utils, utils
 
-log = logging.getLogger("ida_medigate.utils")
+log = logging.getLogger("ida_medigate.hexrays_hooks")
 
 
-class CPPHooks(ida_idp.IDB_Hooks):
-    def __init__(self, is_decompiler_on):
-        super(CPPHooks, self).__init__()
-        self.is_decompiler_on = is_decompiler_on
-
-    def renamed(self, ea, new_name, local_name):
-        if utils.is_func_start(ea):
-            func, args_list = cpp_utils.post_func_name_change(new_name, ea)
-            self.unhook()
-            for args in args_list:
-                func(*args)
-            self.hook()
-        return 0
-
-    def func_updated(self, pfn):
-        func, args_list = cpp_utils.post_func_type_change(pfn)
-        self.unhook()
-        for args in args_list:
-            func(*args)
-        self.hook()
-        return 0
-
-    def renaming_struc_member(self, sptr, mptr, newname):
-        if sptr.is_frame():
-            return 0
-        cpp_utils.post_struct_member_name_change(mptr, newname)
-        return 0
-
-    def struc_member_changed(self, sptr, mptr):
-        cpp_utils.post_struct_member_type_change(mptr)
-        return 0
-
-    def ti_changed(self, ea, typeinf, fnames):
-        if self.is_decompiler_on:
-            res = ida_struct.get_member_by_id(ea)
-            if res is not None:
-                m, name, sptr = res
-                if sptr.is_frame():
-                    func = ida_funcs.get_func(ida_frame.get_func_by_frame(sptr.id))
-                    if func is not None:
-                        return self.func_updated(func)
-            elif utils.is_func_start(ea):
-                return self.func_updated(ida_funcs.get_func(ea))
-        return 0
-
-
-class CPPUIHooks(ida_kernwin.View_Hooks):
-    def view_dblclick(self, viewer, point):
-        widget_type = ida_kernwin.get_widget_type(viewer)
-        if not (widget_type == 48 or widget_type == 28):
-            return
-        # Decompiler or Structures window
-        func_cand_name = None
-        place, x, y = ida_kernwin.get_custom_viewer_place(viewer, False)
-        if place.name() == "structplace_t":  # Structure window:
-            structplace = ida_kernwin.place_t_as_structplace_t(place)
-            if structplace is not None:
-                s = ida_struct.get_struc(ida_struct.get_struc_by_idx(structplace.idx))
-                if s:
-                    member = ida_struct.get_member(s, structplace.offset)
-                    if member:
-                        func_cand_name = ida_struct.get_member_name(member.id)
-        if func_cand_name is None:
-            line = utils.get_curline_striped_from_viewer(viewer)
-            func_cand_name = cpp_utils.find_valid_cppname_in_line(line, x)
-        if func_cand_name is not None:
-            func_cand_ea = ida_name.get_name_ea(BADADDR, func_cand_name)
-            if func_cand_ea is not None and utils.is_func_start(func_cand_ea):
-                idc.jumpto(func_cand_ea)
+_ANOTHER_DECOMPILER_EA = None
 
 
 class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
@@ -326,42 +252,60 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         return 0
 
 
-class HexRaysHooks(idaapi.Hexrays_Hooks):
-    def __init__(self, *args):
-        idaapi.Hexrays_Hooks.__init__(self, *args)
-        self.another_decompile_ea = False
-
-    def maturity(self, cfunc, maturity):
-        if maturity in [idaapi.CMAT_FINAL]:
-            if self.another_decompile_ea:
-                self.another_decompile_ea = None
-                return 0
-            # if maturity in [idaapi.CMAT_CPA]:
-            # if maturity in [idaapi.CPA]:
-            pfv = Polymorphism_fixer_visitor_t(cfunc)
-            pfv.apply_to_exprs(cfunc.body, None)
-            log.debug("results: %s", pfv.selections)
-            if pfv.selections != []:
-                for ea, offset, funcptr_member_type in pfv.selections:
-                    intvec = idaapi.intvec_t()
-                    # TODO: Think if needed to distinguished between user
-                    #   union members chooses and plugin chooses
-                    if not cfunc.get_user_union_selection(ea, intvec):
-                        intvec.push_back(offset)
-                        cfunc.set_user_union_selection(ea, intvec)
-                        if funcptr_member_type is not None:
-                            ida_nalt.set_op_tinfo(ea, 0, funcptr_member_type)
-                cfunc.save_user_unions()
-                self.another_decompile_ea = cfunc.entry_ea
-
+def _on_maturity(cfunc, maturity):
+    global _ANOTHER_DECOMPILER_EA
+    if maturity not in [idaapi.CMAT_FINAL]:
         return 0
-
-    def refresh_pseudocode(self, vu):
-        if self.another_decompile_ea:
-            log.debug("decompile again")
-            ea = self.another_decompile_ea
-            ida_hexrays.mark_cfunc_dirty(ea, False)
-            cfunc = ida_hexrays.decompile(ea)
-            self.another_decompile_ea = None
-            vu.switch_to(cfunc, True)
+    if _ANOTHER_DECOMPILER_EA:
+        _ANOTHER_DECOMPILER_EA = None
         return 0
+    # if maturity in [idaapi.CMAT_CPA]:
+    # if maturity in [idaapi.CPA]:
+    pfv = Polymorphism_fixer_visitor_t(cfunc)
+    pfv.apply_to_exprs(cfunc.body, None)
+    log.debug("results: %s", pfv.selections)
+    if pfv.selections == []:
+        return 0
+    for ea, offset, funcptr_member_type in pfv.selections:
+        intvec = idaapi.intvec_t()
+        # TODO: Think if needed to distinguished between user
+        #   union members chooses and plugin chooses
+        if not cfunc.get_user_union_selection(ea, intvec):
+            intvec.push_back(offset)
+            cfunc.set_user_union_selection(ea, intvec)
+            if funcptr_member_type is not None:
+                ida_nalt.set_op_tinfo(ea, 0, funcptr_member_type)
+    cfunc.save_user_unions()
+    _ANOTHER_DECOMPILER_EA = cfunc.entry_ea
+    return 0
+
+
+def _on_refresh_pseudocode(vu):
+    global _ANOTHER_DECOMPILER_EA
+    if not _ANOTHER_DECOMPILER_EA:
+        return 0
+    log.debug("decompile again")
+    ea = _ANOTHER_DECOMPILER_EA
+    ida_hexrays.mark_cfunc_dirty(ea, False)
+    cfunc = ida_hexrays.decompile(ea)
+    _ANOTHER_DECOMPILER_EA = None
+    vu.switch_to(cfunc, True)
+    return 0
+
+
+def _callback(*args):
+    if args[0] == idaapi.hxe_maturity:
+        cfunc = args[1]
+        maturity = args[2]
+        _on_maturity(cfunc, maturity)
+    elif args[0] == idaapi.hxe_refresh_pseudocode:
+        vu = args[1]
+        _on_refresh_pseudocode(vu)
+
+
+def install_hexrays_hook():
+    return ida_hexrays.install_hexrays_callback(_callback)
+
+
+def remove_hexrays_hook():
+    return ida_hexrays.remove_hexrays_callback(_callback)

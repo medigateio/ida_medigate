@@ -1,9 +1,15 @@
 import logging
+from ida_hexrays import install_hexrays_callback, remove_hexrays_callback
 
 import ida_idaapi
 import ida_kernwin
 import idaapi
-from .hooks import CPPHooks, CPPUIHooks, HexRaysHooks
+from .cpp_hooks import CPPHooks
+from .cpp_ui_hooks import CPPUIHooks
+from .hexrays_hooks import (
+    install_hexrays_hook,
+    remove_hexrays_hook,
+)
 
 log = logging.getLogger("ida_medigate.plugin")
 
@@ -33,7 +39,6 @@ class CPPPlugin(ida_idaapi.plugin_t):
         log.info("Im up")
         self.core_hook = None
         self.gui_hook = None
-        self.hexrays_hooks = None
         self.hooking = False
         self.is_decompiler_on = False
 
@@ -42,8 +47,9 @@ class CPPPlugin(ida_idaapi.plugin_t):
         This method is called when IDA is loading the plugin. It will first
         load the configuration file, then initialize all the modules.
         """
-        if idaapi.init_hexrays_plugin():
-            self.hexrays_hooks = HexRaysHooks()
+        if not idaapi.init_hexrays_plugin():
+            log.warn("Hex-Rays decompiler is not available. Some functions will not work.")
+        else:
             self.is_decompiler_on = True
         self.core_hook = CPPHooks(self.is_decompiler_on)
         self.gui_hook = CPPUIHooks()
@@ -62,25 +68,25 @@ class CPPPlugin(ida_idaapi.plugin_t):
         log.info("C++ plugin is now: %s" % ("On" if self.hooking else "Off"))
 
     def hook(self):
-        if self.hexrays_hooks:
-            if not self.hexrays_hooks.hook():
-                log.warn("Failed to set decompiler hooks")
+        if self.is_decompiler_on:
+            if not install_hexrays_hook():
+                log.warn("Failed to install decompiler hooks")
         if not self.core_hook.hook():
-            log.warn("Failed to set core hooks")
+            log.warn("Failed to install core hooks")
         if not self.gui_hook.hook():
-            log.warn("Failed to set gui hooks")
+            log.warn("Failed to install gui hooks")
         log.info("hooks installed")
         self.hooking = True
 
     def unhook(self):
-        if self.hexrays_hooks:
-            if not self.hexrays_hooks.unhook():
-                log.warn("Failed to unhook decompiler hooks")
+        if self.is_decompiler_on:
+            if not remove_hexrays_hook():
+                log.warn("Failed to remove decompiler hooks")
         if not self.core_hook.unhook():
-            log.warn("Failed to unhook core hooks")
+            log.warn("Failed to remove core hooks")
         if not self.gui_hook.unhook():
-            log.warn("Failed to unhook gui hooks")
-        log.info("hooks uninstalled")
+            log.warn("Failed to remove gui hooks")
+        log.info("hooks removed")
         self.hooking = False
 
     def install_hotkey(self):
