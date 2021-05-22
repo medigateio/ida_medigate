@@ -120,7 +120,6 @@ class RTTIParser(object):
             )
             if not self.updated_parents:
                 cpp_utils.install_vtables_union(self.name)
-                pass
 
     def try_parse_vtable(self, ea):
         pass
