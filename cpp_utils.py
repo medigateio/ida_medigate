@@ -619,7 +619,11 @@ def add_baseclass(class_name, baseclass_name, baseclass_offset=0, to_refresh=Fal
             baseclass_name,
         )
         return False
-    member.props |= ida_struct.MF_BASECLASS
-    if to_refresh:
-        utils.refresh_struct(struct_ptr)
+    try:
+        member.props |= ida_struct.MF_BASECLASS
+        if to_refresh:
+            utils.refresh_struct(struct_ptr)
+    except AttributeError:
+        # ida_struct.MF_BASECLASS does not exist in IDA 7.0
+        pass
     return True
