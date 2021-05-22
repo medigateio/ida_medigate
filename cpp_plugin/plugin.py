@@ -26,9 +26,8 @@ class CPPPlugin(ida_idaapi.plugin_t):
     PLUGIN_AUTHORS = "Medigate"
     TOGGLE_HOTKEY = "CTRL+ALT+C"
 
-    # These flags specify that the plugin should persist between databases
-    # loading and saving, and should not have a menu entry.
-    flags = ida_idaapi.PLUGIN_FIX | ida_idaapi.PLUGIN_HIDE
+    # These flags specify that the plugin should not have a menu entry
+    flags = ida_idaapi.PLUGIN_HIDE
     comment = "CPP support plugin"
     help = ""
     wanted_name = PLUGIN_NAME
