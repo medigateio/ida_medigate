@@ -213,7 +213,7 @@ def add_to_struct(
                 i += 1
                 if i > MAX_MEMBER_INDEX:
                     log.debug("failed change name")
-                    return
+                    return None
                 ret_val = ida_struct.set_member_name(struct, offset, new_member_name)
 
     else:
@@ -225,7 +225,7 @@ def add_to_struct(
             new_member_name = "%s_%d" % (member_name, i)
             i += 1
             if i > MAX_MEMBER_INDEX:
-                return
+                return None
             ret_val = ida_struct.add_struc_member(
                 struct, new_member_name, offset, flag, mt, member_size
             )

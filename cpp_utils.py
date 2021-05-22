@@ -107,7 +107,7 @@ def find_vtable_at_offset(struct_ptr, vtable_offset):
     while current_offset < vtable_offset and member is not None:
         current_struct = utils.get_member_substruct(member)
         if current_struct is None:
-            return
+            return None
         parents_vtables_classes.append(
             [
                 ida_struct.get_struc_name(current_struct.id),
@@ -240,7 +240,7 @@ def add_child_vtable(parent_name, child_name, child_vtable_id, offset):
     vtable_member_tinfo = utils.get_member_tinfo(parent_vtable_member)
     parent_vtable_struct = utils.get_sptr_by_name(get_class_vtable_struct_name(parent_name, offset))
     if parent_vtable_struct is None:
-        return None
+        return
     pointed_struct = utils.extract_struct_from_tinfo(vtable_member_tinfo)
     log.debug("pointed_struct: %s", str(pointed_struct))
     if (

@@ -30,10 +30,10 @@ class RTTIParser(object):
     @classmethod
     def extract_rtti_info_from_typeinfo(cls, typeinfo):
         if typeinfo in cls.found_classes:
-            return
+            return None
         rtti_obj = cls.parse_typeinfo(typeinfo)
         if rtti_obj is None:
-            return
+            return None
         log.info("%s: Parsed typeinfo", rtti_obj.name)
         cls.found_classes.add(rtti_obj.typeinfo)
         for parent_typeinfo, _, offset in rtti_obj.raw_parents:
@@ -50,7 +50,7 @@ class RTTIParser(object):
 
         log.debug("%s: Finish setup parents", rtti_obj.name)
         if not rtti_obj.create_structs():
-            return False
+            return None
         rtti_obj.make_rtti_obj_pretty()
         rtti_obj.find_vtables()
         return rtti_obj
@@ -288,7 +288,7 @@ class GccRTTIParser(RTTIParser):
             pure_virtual_name=self.pure_virtual_name,
         )
         if func_ea is None:
-            return
+            return None
         vtable_offset = utils.get_signed_int(ea - utils.WORD_LEN) * (-1)
         vtable_struct, this_type = self.create_vtable_struct(vtable_offset)
         cpp_utils.update_vtable_struct(
