@@ -6,7 +6,7 @@ import idaapi
 from idc import BADADDR
 from .. import cpp_utils, utils
 
-log = logging.getLogger("ida_medigate.hexrays_hooks")
+log = logging.getLogger("ida_medigate")
 
 
 _ANOTHER_DECOMPILER_EA = None

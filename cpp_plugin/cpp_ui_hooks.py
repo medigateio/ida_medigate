@@ -6,7 +6,7 @@ import idc
 from idc import BADADDR
 from .. import cpp_utils, utils
 
-log = logging.getLogger("ida_medigate.cpp_ui_hooks")
+log = logging.getLogger("ida_medigate")
 
 
 class CPPUIHooks(ida_kernwin.View_Hooks):

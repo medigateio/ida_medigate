@@ -21,7 +21,7 @@ import idc
 
 from idc import BADADDR
 
-log = logging.getLogger("ida_medigate.utils")
+log = logging.getLogger("ida_medigate")
 
 MAX_MEMBER_INDEX = 250
 

@@ -10,7 +10,7 @@ from idaapi import BADADDR
 from . import cpp_utils
 from . import utils
 
-log = logging.getLogger("ida_medigate.rtti_parser")
+log = logging.getLogger("ida_medigate")
 
 
 class RTTIParser(object):

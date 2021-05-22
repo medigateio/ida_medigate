@@ -14,7 +14,7 @@ from idaapi import BADADDR
 from . import utils
 from .utils import batchmode
 
-log = logging.getLogger("ida_medigate.cpp_utils")
+log = logging.getLogger("ida_medigate")
 
 VTABLE_KEYWORD = "vtbl"
 VTABLE_UNION_KEYWORD = "VTABLES"

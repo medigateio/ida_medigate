@@ -5,7 +5,7 @@ import idc
 from . import utils
 from idaapi import BADADDR
 
-log = logging.getLogger("ida_medigate.decompiler_utils")
+log = logging.getLogger("ida_medigate")
 
 
 def get_insn(ea=None):

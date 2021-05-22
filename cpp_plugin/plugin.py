@@ -1,5 +1,4 @@
 import logging
-from ida_hexrays import install_hexrays_callback, remove_hexrays_callback
 
 import ida_idaapi
 import ida_kernwin
@@ -11,7 +10,7 @@ from .hexrays_hooks import (
     remove_hexrays_hook,
 )
 
-log = logging.getLogger("ida_medigate.plugin")
+log = logging.getLogger("ida_medigate")
 
 
 class CPPPlugin(ida_idaapi.plugin_t):
@@ -77,6 +76,7 @@ class CPPPlugin(ida_idaapi.plugin_t):
             log.warn("Failed to install gui hooks")
         log.info("hooks installed")
         self.hooking = True
+        return True
 
     def unhook(self):
         if self.is_decompiler_on:
@@ -88,6 +88,7 @@ class CPPPlugin(ida_idaapi.plugin_t):
             log.warn("Failed to remove gui hooks")
         log.info("hooks removed")
         self.hooking = False
+        return True
 
     def install_hotkey(self):
         return ida_kernwin.add_hotkey(self.TOGGLE_HOTKEY, self.toggle_hooks)
