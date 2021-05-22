@@ -54,9 +54,9 @@ def get_num_from_expr(expr):
 
 def get_call_from_insn(insn):
     expr = None
-    if type(insn) == ida_hexrays.cinsn_t and insn.op == ida_hexrays.cit_expr:
+    if isinstance(insn, ida_hexrays.cinsn_t) and insn.op == ida_hexrays.cit_expr:
         expr = insn.cexpr
-    elif type(insn) == ida_hexrays.cexpr_t:
+    elif isinstance(insn, ida_hexrays.cexpr_t):
         expr = insn
     else:
         return None
