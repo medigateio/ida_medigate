@@ -91,7 +91,7 @@ class RTTIParser(object):
             baseclass_size = ida_struct.get_struc_size(baseclass_id)
             if baseclass_id == BADADDR or baseclass_size == 0:
                 log.warning(
-                    "bad struct id or size: %s(0x%x:%s) - %s, %d",
+                    "bad struct id or size: %s(0x%X:%s) - 0x%X, %d",
                     self.name,
                     parent_offset,
                     parent_name,
@@ -191,15 +191,15 @@ class GccRTTIParser(RTTIParser):
         for xref in idautils.XrefsTo(class_type - cls.OFFSET_FROM_TYPEINF_SYM):
             if (idx + 1) % 200 == 0:
                 # idc.batch(0)
-                log.info("\t Done %s", idx)
+                log.info("\t Done %d", idx)
                 # ida_loader.save_database(None, 0)
                 # idc.batch(1)
             if utils.get_ptr(xref.frm) != class_type:
                 continue
             try:
                 cls.extract_rtti_info_from_typeinfo(xref.frm)
-            except Exception as e:
-                log.exception("Exception at 0x%x:", xref.frm)
+            except Exception as ex:
+                log.exception("Exception at %08X: %s", xref.frm, ex)
             idx += 1
 
     @classmethod

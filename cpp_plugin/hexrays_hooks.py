@@ -51,7 +51,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
             result = ida_struct.get_member_by_fullname(union_name + "." + cand)
             if result:
                 m, s = result
-                log.debug("Found class: %s, offset=%d", cand, m.soff)
+                log.debug("Found class: %s, offset=0x%X", cand, m.soff)
                 return m
         return None
 
@@ -70,7 +70,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         vtable_sptr = utils.get_sptr_by_name(vtable_struct_name)
         if vtable_sptr is None:
             log.debug(
-                "0x%x: Oh no %s is not a valid struct",
+                "%08X: Oh no %s is not a valid struct",
                 self.cfunc.entry_ea,
                 vtable_struct_name,
             )
@@ -138,7 +138,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
             #   .vtable.PdmAcqServiceIf[1].___cxa_pure_virtual_2
             if idx_cexpr.y.op != ida_hexrays.cot_num:
                 log.debug(
-                    "0x%x: idx doesn't contains a num but %s",
+                    "%08X: idx doesn't contains a num but %s",
                     self.cfunc.entry_ea,
                     idx_cexpr.y.opname,
                 )
@@ -146,7 +146,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
             num = idx_cexpr.y.get_const_value()
             if not (idx_cexpr.type and idx_cexpr.type.is_struct()):
                 log.debug(
-                    "0x%x idx type isn't struct %s",
+                    "%08X idx type isn't struct %s",
                     self.cfunc.entry_ea,
                     idx_cexpr.type,
                 )
@@ -154,7 +154,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
             idx_struct = utils.get_struc_from_tinfo(idx_cexpr.type)
             if idx_struct is None:
                 log.debug(
-                    "0x%x idx type isn't pointing to struct %s",
+                    "%08X idx type isn't pointing to struct %s",
                     self.cfunc.entry_ea,
                     idx_cexpr.type,
                 )
@@ -168,12 +168,12 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         try:
             funcptr_member = ida_struct.get_member(vtable_sptr, offset)
         except TypeError as e:
-            log.exception("0x%x: bad offset: 0x%x", self.cfunc.entry_ea, offset)
+            log.exception("%08X: bad offset: 0x%X", self.cfunc.entry_ea, offset)
             return None
 
         if funcptr_member is None:
             log.debug(
-                "0x%x:  %s.%d is not a valid struct member",
+                "%08X:  %s.0x%X is not a valid struct member",
                 self.cfunc.entry_ea,
                 vtable_struct_name,
                 offset,
@@ -183,7 +183,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         funcptr_member_type = utils.get_member_tinfo(funcptr_member)
         if not funcptr_member_type.is_funcptr():
             log.debug(
-                "0x%x: member type (%s) isn't funcptr!",
+                "%08X: member type (%s) isn't funcptr!",
                 self.cfunc.entry_ea,
                 funcptr_member_type.dstr(),
             )
@@ -236,7 +236,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         union_name = self.get_vtables_union_name(expr)
         if union_name is None:
             return 0
-        log.debug("Found union -%s", union_name)
+        log.debug("Found union - %s", union_name)
 
         chain = self.build_classes_chain(expr)
         if chain is None:
@@ -253,7 +253,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         if ea == BADADDR:
             log.debug("BADADDR")
             return 0
-        log.debug("Found VTABLES, ea: 0x%x", ea)
+        log.debug("Found VTABLES, ea: %08X", ea)
         self.selections.append((ea, m.soff, funcptr_member_type))
         return 0
 

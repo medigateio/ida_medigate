@@ -111,11 +111,11 @@ def add_struct_xrefs(cfunc):
                 strname = idaapi.get_struc_name(struct_id)
                 if member_id is None:
                     idaapi.add_dref(ea, struct_id, flags)
-                    log.debug(" %X \tstruct %s \t%s", ea, strname, flags_to_str(flags))
+                    log.debug(" %08X \tstruct %s \t%s", ea, strname, flags_to_str(flags))
                 else:
                     idaapi.add_dref(ea, member_id, flags)
                     log.debug(
-                        " %X \tmember %s.%s \t%s",
+                        " %08X \tmember %s.%s \t%s",
                         ea,
                         strname,
                         idaapi.get_member_name(member_id),
@@ -171,7 +171,7 @@ def add_struct_xrefs(cfunc):
 
                 else:
                     log.error(
-                        "failure from %X " "on struct %s (id: %d) %s",
+                        "failure from %08X " "on struct %s (id: 0x%X) %s",
                         ea,
                         strname,
                         stid,
@@ -200,7 +200,7 @@ def callback(*args):
         cfunc = args[1]
         mat = args[2]
         if mat == idaapi.CMAT_FINAL:
-            log.debug("analyzing function at %X", cfunc.entry_ea)
+            log.debug("analyzing function at %08X", cfunc.entry_ea)
             add_struct_xrefs(cfunc)
     return 0
 

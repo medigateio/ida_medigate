@@ -149,7 +149,7 @@ def get_func_details(func_ea):
         return None
     func_details = idaapi.func_type_data_t()
     if not xfunc.type.get_func_details(func_details):
-        log.warning("Couldn't get func type details %X", func_ea)
+        log.warning("%08X Couldn't get func type details", func_ea)
         return None
     return func_details
 
@@ -157,10 +157,10 @@ def get_func_details(func_ea):
 def update_func_details(func_ea, func_details):
     function_tinfo = idaapi.tinfo_t()
     if not function_tinfo.create_func(func_details):
-        log.warning("Couldn't create func from details %X", func_ea)
+        log.warning("%08X Couldn't create func from details", func_ea)
         return None
     if not ida_typeinf.apply_tinfo(func_ea, function_tinfo, idaapi.TINFO_DEFINITE):
-        log.warning("Couldn't apply func tinfo %X", func_ea)
+        log.warning("%08X Couldn't apply func tinfo", func_ea)
         return None
     return function_tinfo
 
@@ -239,7 +239,7 @@ def add_to_struct(
 
 def set_func_name(func_ea, new_name):
     if not idc.set_name(func_ea, new_name, ida_name.SN_CHECK | ida_name.SN_FORCE):
-        log.warn("Couldn't set func name '%s' at %X", new_name, func_ea)
+        log.warn("%08X Couldn't set func name '%s'", func_ea, new_name)
     return idc.get_name(func_ea)
 
 
@@ -385,7 +385,7 @@ def expand_struct(struct_id, new_size):
                     ]
                 )
             else:
-                log.warning("Xref 0x%X wasn't struct_member", xref.frm)
+                log.warning("Xref at %08X wasn't struct_member", xref.frm)
 
     ret = add_to_struct(ida_struct.get_struc(struct_id), None, None, new_size - WORD_LEN)
     log.debug("Now fix args:")
@@ -468,7 +468,7 @@ def get_enum_const_name(enum_name, const_value):
         return ""
     const_id = idc.get_enum_member(enum_id, const_value, 0, ida_enum.DEFMASK)
     if const_id == BADADDR:
-        log.warn("Enum const not found %s, %X", enum_name, const_value)
+        log.warn("Enum const not found %s, 0x%X", enum_name, const_value)
         return ""
     return idc.get_enum_member_name(const_id)
 

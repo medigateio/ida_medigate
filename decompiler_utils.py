@@ -74,4 +74,4 @@ def run_operation_on_func_xrefs(func_name, operation, exception_msg=None):
             insn = get_insn(xref)
             operation(insn, xref)
         except Exception as e:
-            log.exception("0x%x: %s", ea, exception_msg)
+            log.exception("%08X: %s", ea, exception_msg)
