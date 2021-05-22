@@ -1,8 +1,11 @@
-from __future__ import print_function
+import logging
+
 import ida_idaapi
 import ida_kernwin
 import idaapi
 from .hooks import CPPHooks, CPPUIHooks, HexRaysHooks
+
+log = logging.getLogger("ida_medigate.plugin")
 
 
 class CPPPlugin(ida_idaapi.plugin_t):
@@ -27,7 +30,7 @@ class CPPPlugin(ida_idaapi.plugin_t):
     wanted_hotkey = ""
 
     def __init__(self):
-        print("Im up")
+        log.info("Im up")
         self.core_hook = None
         self.gui_hook = None
         self.hexrays_hooks = None
@@ -44,45 +47,55 @@ class CPPPlugin(ida_idaapi.plugin_t):
             self.is_decompiler_on = True
         self.core_hook = CPPHooks(self.is_decompiler_on)
         self.gui_hook = CPPUIHooks()
-        self.hook()
-        self.install_hotkey()
-        keep = ida_idaapi.PLUGIN_KEEP
-        return keep
+        if not self.hook():
+            log.warn("Failed to set hooks")
+            return idaapi.PLUGIN_SKIP
+        if not self.install_hotkey():
+            log.warn("Failed to add hotkey")
+        return idaapi.PLUGIN_KEEP
 
     def toggle_hooks(self):
         if self.hooking:
             self.unhook()
         else:
             self.hook()
-        print("C++ plugin is now: %s" % ("On" if self.hooking else "Off"))
+        log.info("C++ plugin is now: %s" % ("On" if self.hooking else "Off"))
 
     def hook(self):
         if self.hexrays_hooks:
-            self.hexrays_hooks.hook()
-        self.core_hook.hook()
-        self.gui_hook.hook()
+            if not self.hexrays_hooks.hook():
+                log.warn("Failed to set decompiler hooks")
+        if not self.core_hook.hook():
+            log.warn("Failed to set core hooks")
+        if not self.gui_hook.hook():
+            log.warn("Failed to set gui hooks")
+        log.info("hooks installed")
         self.hooking = True
 
     def unhook(self):
         if self.hexrays_hooks:
-            self.hexrays_hooks.unhook()
-        self.core_hook.unhook()
-        self.gui_hook.unhook()
+            if not self.hexrays_hooks.unhook():
+                log.warn("Failed to unhook decompiler hooks")
+        if not self.core_hook.unhook():
+            log.warn("Failed to unhook core hooks")
+        if not self.gui_hook.unhook():
+            log.warn("Failed to unhook gui hooks")
+        log.info("hooks uninstalled")
         self.hooking = False
 
     def install_hotkey(self):
-        ida_kernwin.add_hotkey(self.TOGGLE_HOTKEY, self.toggle_hooks)
+        return ida_kernwin.add_hotkey(self.TOGGLE_HOTKEY, self.toggle_hooks)
 
     @classmethod
     def description(cls):
         """Return the description displayed in the console."""
-        return "{} v{}".format(cls.PLUGIN_NAME, cls.PLUGIN_VERSION)
+        return "%s v%s".format(cls.PLUGIN_NAME, cls.PLUGIN_VERSION)
 
     def run(self, _):
         """
         This method is called when IDA is running the plugin as a script.
         """
-        ida_kernwin.warning("IDACpp cannot be run as a script")
+        ida_kernwin.warning("ida_medigate C++ plugin cannot be run as a script")
         return False
 
     def term(self):
@@ -90,5 +103,6 @@ class CPPPlugin(ida_idaapi.plugin_t):
         This method is called when IDA is unloading the plugin. It will
         terminated all the modules, then save the configuration file.
         """
+        log.debug("terminating")
         self.unhook()
         idaapi.term_hexrays_plugin()
