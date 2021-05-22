@@ -7,9 +7,9 @@ import ida_name
 import ida_struct
 import ida_typeinf
 import ida_xref
-import idaapi
 import idautils
 import idc
+import idaapi
 from idaapi import BADADDR
 from . import utils
 from .utils import batchmode

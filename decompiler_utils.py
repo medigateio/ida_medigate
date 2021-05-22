@@ -2,8 +2,8 @@ import logging
 
 import ida_hexrays
 import idc
-from . import utils
 from idaapi import BADADDR
+from . import utils
 
 log = logging.getLogger("ida_medigate")
 
