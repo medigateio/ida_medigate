@@ -43,16 +43,14 @@ def get_vtable_line(ea, stop_ea=None, ignore_list=None, pure_virtual_name=None):
     if ignore_list is None:
         ignore_list = []
     func_ea = utils.get_ptr(ea)
-    if (
-        utils.is_func_start(func_ea)
-        and (stop_ea is None or ea < stop_ea)
-        and (
-            func_ea not in ignore_list
-            or (pure_virtual_name is not None and idc.GetDisasm(ea).endswith(pure_virtual_name))
-        )
-    ):
-        return func_ea, ea + utils.WORD_LEN
-    return None, 0
+    if not utils.is_func_start(func_ea):
+        return None, 0
+    if stop_ea is not None and ea >= stop_ea:
+        return None, 0
+    is_pure_func = pure_virtual_name is not None and idc.GetDisasm(ea).endswith(pure_virtual_name)
+    if func_ea in ignore_list and not is_pure_func:
+        return None, 0
+    return func_ea, ea + utils.WORD_LEN
 
 
 def is_valid_vtable_name(member_name):
