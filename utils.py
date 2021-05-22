@@ -355,7 +355,7 @@ def expand_struct(struct_id, new_size):
     xrefs = idautils.XrefsTo(struct.id)
     for xref in xrefs:
         if xref.type == ida_xref.dr_R and xref.user == 0 and xref.iscode == 0:
-            member, full_name, x_struct = ida_struct.get_member_by_id(xref.frm)
+            member, _, x_struct = ida_struct.get_member_by_id(xref.frm)
             if x_struct is not None:
                 old_name = ida_struct.get_member_name(member.id)
                 offset = member.soff

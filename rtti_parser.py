@@ -256,7 +256,7 @@ class GccRTTIParser(RTTIParser):
 
     @classmethod
     def strip_class_name(cls, cls_name):
-        pre_dict = {"`typeinfo for": ":"}
+        # pre_dict = {"`typeinfo for": ":"}
         words_dict = {
             "`anonymous namespace'": "ANONYMOUS",
             "`anonymous_namespace'": "ANONYMOUS",

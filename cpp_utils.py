@@ -288,8 +288,8 @@ def update_func_this(func_ea, this_type=None):
                 func_details[0].name = "this"
                 func_details[0].type = this_type
         functype = utils.update_func_details(func_ea, func_details)
-    except ida_hexrays.DecompilationFailure as e:
-        log.exception("Couldn't decompile func at %08X", func_ea)
+    except ida_hexrays.DecompilationFailure as ex:
+        log.exception("Couldn't decompile func at %08X: %s", func_ea, ex)
     return functype
 
 
@@ -318,7 +318,7 @@ def post_func_name_change(new_name, ea):
     xrefs = filter(lambda x: x.type == ida_xref.dr_I and x.user == 1, xrefs)
     args_list = []
     for xref in xrefs:
-        member, old_name, struct = ida_struct.get_member_by_id(xref.frm)
+        member, _, struct = ida_struct.get_member_by_id(xref.frm)
         if member is not None and struct is not None:
             args_list.append([struct, member.get_soff(), new_name])
 
@@ -358,7 +358,7 @@ def post_func_type_change(pfn):
         xfunc = ida_hexrays.decompile(ea)
         func_ptr_typeinf = utils.get_typeinf_ptr(xfunc.type)
         for xref in xrefs:
-            member, old_name, struct = ida_struct.get_member_by_id(xref.frm)
+            member, _, struct = ida_struct.get_member_by_id(xref.frm)
             if member is not None and struct is not None:
                 args_list.append([struct, member, 0, func_ptr_typeinf, idaapi.TINFO_DEFINITE])
     except Exception:
