@@ -4,5 +4,6 @@ __pycache__/
 .vscode/
 .DS_Store
 .python-version
+.pylintrc
 install.sh
 uninstall.sh
