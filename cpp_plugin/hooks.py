@@ -13,6 +13,8 @@ import idc
 from idc import BADADDR
 from .. import cpp_utils, utils
 
+log = logging.getLogger("ida_medigate.utils")
+
 
 class CPPHooks(ida_idp.IDB_Hooks):
     def __init__(self, is_decompiler_on):
@@ -115,7 +117,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         if n_expr.op == ida_hexrays.cot_memptr:
             chain.insert(0, n_expr.x.type.get_pointed_object().get_type_name())
         elif n_expr.op == ida_hexrays.cot_idx:
-            logging.debug("encountered idx, skipping")
+            log.debug("encountered idx, skipping")
             return None
         return chain
 
@@ -124,25 +126,25 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
             result = ida_struct.get_member_by_fullname(union_name + "." + cand)
             if result:
                 m, s = result
-                logging.debug("Found class: %s, offset=%d", cand, m.soff)
+                log.debug("Found class: %s, offset=%d", cand, m.soff)
                 return m
         return None
 
     def get_vtable_sptr(self, m):
         vtable_type = utils.get_member_tinfo(m)
         if not (vtable_type and vtable_type.is_ptr()):
-            logging.debug("vtable_type isn't ptr %s", vtable_type)
+            log.debug("vtable_type isn't ptr %s", vtable_type)
             return None
 
         vtable_struc_typeinf = vtable_type.get_pointed_object()
         if not (vtable_struc_typeinf and vtable_struc_typeinf.is_struct()):
-            logging.debug("vtable isn't struct (%s)", vtable_struc_typeinf.dstr())
+            log.debug("vtable isn't struct (%s)", vtable_struc_typeinf.dstr())
             return None
 
         vtable_struct_name = vtable_struc_typeinf.get_type_name()
         vtable_sptr = utils.get_sptr_by_name(vtable_struct_name)
         if vtable_sptr is None:
-            logging.debug(
+            log.debug(
                 "0x%x: Oh no %s is not a valid struct",
                 self.cfunc.entry_ea,
                 vtable_struct_name,
@@ -157,14 +159,14 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
             return None
 
         if self.parents.size() < 2:
-            logging.debug("parents size less than 2 (%d)", self.parents.size())
+            log.debug("parents size less than 2 (%d)", self.parents.size())
             return None
 
         idx_cexpr = None
         funcptr_parent = None
         funcptr_item = self.parents.at(self.parents.size() - 2)
         if not funcptr_item.is_expr():
-            logging.debug(
+            log.debug(
                 "funcptr_item is not expr!: %s %s %d",
                 type(funcptr_item),
                 funcptr_item.is_expr(),
@@ -175,7 +177,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         if funcptr_expr.op == ida_hexrays.cot_idx:
             idx_cexpr = funcptr_expr
             if self.parents.size() < 4:
-                logging.debug(
+                log.debug(
                     "there is idx but parents size less than 3 (%d)",
                     self.parents.size(),
                 )
@@ -183,17 +185,17 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
 
             funcptr_expr = self.parents.at(self.parents.size() - 3)
             if not funcptr_expr.is_expr():
-                logging.debug("funcptr isn't expr")
+                log.debug("funcptr isn't expr")
                 return None
             funcptr_expr = funcptr_expr.cexpr
             funcptr_parent = self.parents.at(self.parents.size() - 4)
             if not funcptr_parent.is_expr():
-                logging.debug("funcptr_parent isn't expr")
+                log.debug("funcptr_parent isn't expr")
                 return None
             funcptr_parent = funcptr_parent.cexpr
         if funcptr_expr.op not in (ida_hexrays.cot_memptr, ida_hexrays.cot_memref):
 
-            logging.debug("funcptr_expr isn't -> (%s)", funcptr_expr.opname)
+            log.debug("funcptr_expr isn't -> (%s)", funcptr_expr.opname)
             return None
 
         return funcptr_parent, funcptr_expr, idx_cexpr, vtable_expr
@@ -204,7 +206,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
             # wrong vtable*, so it might be too short struct, like:
             #   .vtable.PdmAcqServiceIf[1].___cxa_pure_virtual_2
             if idx_cexpr.y.op != ida_hexrays.cot_num:
-                logging.debug(
+                log.debug(
                     "0x%x: idx doesn't contains a num but %s",
                     self.cfunc.entry_ea,
                     idx_cexpr.y.opname,
@@ -212,13 +214,13 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
                 return -1
             num = idx_cexpr.y.get_const_value()
             if not (idx_cexpr.type and idx_cexpr.type.is_struct()):
-                logging.debug(
+                log.debug(
                     "0x%x idx type isn't struct %s", self.cfunc.entry_ea, idx_cexpr.type
                 )
                 return -1
             idx_struct = utils.get_struc_from_tinfo(idx_cexpr.type)
             if idx_struct is None:
-                logging.debug(
+                log.debug(
                     "0x%x idx type isn't pointing to struct %s",
                     self.cfunc.entry_ea,
                     idx_cexpr.type,
@@ -233,11 +235,11 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         try:
             funcptr_member = ida_struct.get_member(vtable_sptr, offset)
         except TypeError as e:
-            logging.exception("0x%x: bad offset: 0x%x", self.cfunc.entry_ea, offset)
+            log.exception("0x%x: bad offset: 0x%x", self.cfunc.entry_ea, offset)
             return None
 
         if funcptr_member is None:
-            logging.debug(
+            log.debug(
                 "0x%x:  %s.%d is not a valid struct member",
                 self.cfunc.entry_ea,
                 vtable_struct_name,
@@ -247,7 +249,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
 
         funcptr_member_type = utils.get_member_tinfo(funcptr_member)
         if not funcptr_member_type.is_funcptr():
-            logging.debug(
+            log.debug(
                 "0x%x: member type (%s) isn't funcptr!",
                 self.cfunc.entry_ea,
                 funcptr_member_type.dstr(),
@@ -274,7 +276,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         return funcptr_member_type
 
     def dump_expr(self, e):
-        logging.debug("dump: %s", e.opname)
+        log.debug("dump: %s", e.opname)
         while e.op in [
             ida_hexrays.cot_memref,
             ida_hexrays.cot_memptr,
@@ -282,9 +284,9 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
             ida_hexrays.cot_call,
         ]:
             if e.op in [ida_hexrays.cot_memref, ida_hexrays.cot_memptr]:
-                logging.debug("(%s, %d, %s", e.opname, e.m, e.type.dstr())
+                log.debug("(%s, %d, %s", e.opname, e.m, e.type.dstr())
             else:
-                logging.debug("(%s, %s", e.opname, e.type.dstr())
+                log.debug("(%s, %s", e.opname, e.type.dstr())
             e = e.x
 
     def find_ea(self):
@@ -303,7 +305,7 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         union_name = self.get_vtables_union_name(expr)
         if union_name is None:
             return 0
-        logging.debug("Found union -%s", union_name)
+        log.debug("Found union -%s", union_name)
 
         chain = self.build_classes_chain(expr)
         if chain is None:
@@ -318,9 +320,9 @@ class Polymorphism_fixer_visitor_t(ida_hexrays.ctree_visitor_t):
         funcptr_member_type = self.find_funcptr(m)
 
         if ea == BADADDR:
-            logging.debug("BADADDR")
+            log.debug("BADADDR")
             return 0
-        logging.debug("Found VTABLES, ea: 0x%x", ea)
+        log.debug("Found VTABLES, ea: 0x%x", ea)
         self.selections.append((ea, m.soff, funcptr_member_type))
         return 0
 
@@ -339,7 +341,7 @@ class HexRaysHooks(idaapi.Hexrays_Hooks):
             # if maturity in [idaapi.CPA]:
             pfv = Polymorphism_fixer_visitor_t(cfunc)
             pfv.apply_to_exprs(cfunc.body, None)
-            logging.debug("results: %s", pfv.selections)
+            log.debug("results: %s", pfv.selections)
             if pfv.selections != []:
                 for ea, offset, funcptr_member_type in pfv.selections:
                     intvec = idaapi.intvec_t()
@@ -357,7 +359,7 @@ class HexRaysHooks(idaapi.Hexrays_Hooks):
 
     def refresh_pseudocode(self, vu):
         if self.another_decompile_ea:
-            logging.debug("decompile again")
+            log.debug("decompile again")
             ea = self.another_decompile_ea
             ida_hexrays.mark_cfunc_dirty(ea, False)
             cfunc = ida_hexrays.decompile(ea)

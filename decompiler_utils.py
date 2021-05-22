@@ -5,6 +5,8 @@ import idc
 from . import utils
 from idaapi import BADADDR
 
+log = logging.getLogger("ida_medigate.decompiler_utils")
+
 
 def get_insn(ea=None):
     if ea is None:
@@ -72,4 +74,4 @@ def run_operation_on_func_xrefs(func_name, operation, exception_msg=None):
             insn = get_insn(xref)
             operation(insn, xref)
         except Exception as e:
-            logging.exception("0x%x: %s", ea, exception_msg)
+            log.exception("0x%x: %s", ea, exception_msg)

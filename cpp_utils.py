@@ -14,6 +14,8 @@ from idaapi import BADADDR
 from . import utils
 from .utils import batchmode
 
+log = logging.getLogger("ida_medigate.cpp_utils")
+
 VTABLE_KEYWORD = "vtbl"
 VTABLE_UNION_KEYWORD = "VTABLES"
 # VTABLES_UNION_VTABLE_FIELD_POSTFIX = "_vtable"
@@ -117,7 +119,7 @@ def find_vtable_at_offset(struct_ptr, vtable_offset):
         )
         member = ida_struct.get_member(current_struct, vtable_offset - current_offset)
         if member is None:
-            logging.exception(
+            log.exception(
                 "Couldn't find vtable at offset %d for %d",
                 vtable_offset - current_offset,
                 struct_ptr.id,
@@ -166,7 +168,7 @@ def get_interface_empty_vtable_name():
 def install_vtables_union(
     class_name, class_vtable_member=None, vtable_member_tinfo=None, offset=0
 ):
-    logging.debug(
+    log.debug(
         "install_vtables_union(%s, %s, %s)",
         class_name,
         class_vtable_member,
@@ -182,21 +184,21 @@ def install_vtables_union(
     if old_vtable_sptr and not ida_struct.set_struc_name(
         old_vtable_sptr.id, old_vtable_class_name + "_orig"
     ):
-        logging.exception(
+        log.exception(
             "Failed changing %s->%sorig", old_vtable_class_name, old_vtable_class_name,
         )
         return -1
     vtables_union_id = utils.get_or_create_struct_id(vtables_union_name, True)
     vtable_member_tinfo = utils.get_typeinf(old_vtable_class_name + "_orig")
     if vtables_union_id == BADADDR:
-        logging.exception(
+        log.exception(
             "Cannot create union vtable for %s()%s", class_name, vtables_union_name,
         )
         return -1
 
     vtables_union = ida_struct.get_struc(vtables_union_id)
     if not vtables_union:
-        logging.exception("Could retrieve vtables union for %s", class_name)
+        log.exception("Could retrieve vtables union for %s", class_name)
     if vtable_member_tinfo is not None:
         vtables_union_vtable_field_name = get_class_vtables_field_name(class_name)
     else:
@@ -229,7 +231,7 @@ def install_vtables_union(
 
 
 def add_child_vtable(parent_name, child_name, child_vtable_id, offset):
-    logging.debug(
+    log.debug(
         "add_child_vtable (%s, %s, %s)",
         parent_name,
         child_name,
@@ -245,25 +247,25 @@ def add_child_vtable(parent_name, child_name, child_vtable_id, offset):
     if parent_vtable_struct is None:
         return None
     pointed_struct = utils.extract_struct_from_tinfo(vtable_member_tinfo)
-    logging.debug("pointed_struct: %s", str(pointed_struct))
+    log.debug("pointed_struct: %s", str(pointed_struct))
     if (
         (pointed_struct is None)
         or (not is_struct_vtable(pointed_struct))
         or (parent_vtable_struct.id != pointed_struct.id)
     ):
         parent_vtable_member = None
-        logging.debug("Not a struct vtable: %s", str(vtable_member_tinfo))
+        log.debug("Not a struct vtable: %s", str(vtable_member_tinfo))
 
     # TODO: Check that struct is a valid vtable by name
     if not parent_vtable_struct.is_union():
-        logging.debug("%s vtable isn't union -> unionize it!", parent_name)
+        log.debug("%s vtable isn't union -> unionize it!", parent_name)
         parent_vtable_struct = install_vtables_union(
             parent_name, parent_vtable_member, vtable_member_tinfo, offset
         )
 
     child_vtable_name = ida_struct.get_struc_name(child_vtable_id)
     child_vtable = utils.get_typeinf(child_vtable_name)
-    logging.debug(
+    log.debug(
         "add_to_struct %s %s", parent_vtable_struct.id, str(child_vtable)
     )
     if ida_struct.get_struc_size(child_vtable_id) == 0:
@@ -298,7 +300,7 @@ def update_func_this(func_ea, this_type=None):
                 func_details[0].type = this_type
         functype = utils.update_func_details(func_ea, func_details)
     except ida_hexrays.DecompilationFailure as e:
-        logging.exception("Couldn't decompile 0x%x", func_ea)
+        log.exception("Couldn't decompile 0x%x", func_ea)
     return functype
 
 
@@ -312,7 +314,7 @@ def add_class_vtable(struct_ptr, vtable_name, offset=BADADDR, vtable_field_name=
         struct_ptr, vtable_field_name, vtable_type_ptr, offset, overwrite=True
     )
     if new_member is None:
-        logging.warning(
+        log.warning(
             "vtable of %s couldn't added at offset %d", str(vtable_type_ptr), offset
         )
     else:
@@ -429,7 +431,7 @@ def update_vtable_struct(
                 vtable_struct, new_func_name, func_ptr, is_offset=True
             )
         if ptr_member is None:
-            logging.exception(
+            log.exception(
                 "Couldn't add %s(%s) to %d",
                 new_func_name,
                 str(func_ptr),
@@ -497,7 +499,7 @@ def get_overriden_func_names(union_name, offset, get_not_funcs_members=False):
         member = ida_struct.get_member(sptr, i)
         cls = ida_struct.get_member_name(member.id)
         tinfo = utils.get_member_tinfo(member)
-        logging.debug("Trying %s", cls)
+        log.debug("Trying %s", cls)
         if cls == get_interface_empty_vtable_name() or not tinfo.is_ptr():
             continue
         pointed_obj = tinfo.get_pointed_object()
@@ -526,7 +528,7 @@ def set_polymorhpic_func_name(union_name, offset, name, force=False):
                 if new_func_name != "":
                     new_func_name += VTABLE_DELIMITER
                 new_func_name += name
-                logging.debug("0x%x -> %s", ea, new_func_name)
+                log.debug("0x%x -> %s", ea, new_func_name)
                 utils.set_func_name(ea, new_func_name)
 
 
@@ -539,17 +541,17 @@ def create_class(class_name, has_vtable, parent_class=None):
 
 
 def create_vtable_struct(sptr, name, vtable_offset, parent_name=None):
-    logging.debug("create_vtable_struct(%s, %d)", name, vtable_offset)
+    log.debug("create_vtable_struct(%s, %d)", name, vtable_offset)
     vtable_details = find_vtable_at_offset(sptr, vtable_offset)
     parent_vtable_member = None
     parent_vtable_struct = None
     parent_name = None
     parents_chain = None
     if vtable_details is not None:
-        logging.debug("Found parent vtable %s %d", name, vtable_offset)
+        log.debug("Found parent vtable %s %d", name, vtable_offset)
         parent_vtable_member, parent_vtable_struct, parents_chain = vtable_details
     else:
-        logging.debug("Couldn't found parent vtable %s %d", name, vtable_offset)
+        log.debug("Couldn't found parent vtable %s %d", name, vtable_offset)
     if parent_vtable_member is not None:
         parent_name = ida_struct.get_struc_name(parent_vtable_struct.id)
     vtable_name = get_class_vtable_struct_name(name, vtable_offset)
@@ -558,12 +560,12 @@ def create_vtable_struct(sptr, name, vtable_offset, parent_name=None):
     else:
         this_type = utils.get_typeinf_ptr(parent_name)
     if vtable_name is None:
-        logging.exception(
+        log.exception(
             "create_vtable_struct(%s, %d): vtable_name is" " None", name, vtable_offset
         )
     vtable_id = ida_struct.add_struc(BADADDR, vtable_name, False)
     if vtable_id == BADADDR:
-        logging.exception("Couldn't create struct %s", vtable_name)
+        log.exception("Couldn't create struct %s", vtable_name)
     vtable_struct = ida_struct.get_struc(vtable_id)
     if parents_chain:
         for parent_name, offset in parents_chain:
@@ -611,7 +613,7 @@ def add_baseclass(class_name, baseclass_name, baseclass_offset=0, to_refresh=Fal
                                  offset=baseclass_offset,
                                  overwrite=True)
     if not member:
-        logging.debug("add_baseclass(%s. %s): member not found", class_name, baseclass_name)
+        log.debug("add_baseclass(%s. %s): member not found", class_name, baseclass_name)
         return False
     member.props |= ida_struct.MF_BASECLASS
     if to_refresh:

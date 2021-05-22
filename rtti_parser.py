@@ -11,6 +11,8 @@ from idaapi import BADADDR
 from . import cpp_utils
 from . import utils
 
+log = logging.getLogger("ida_medigate.rtti_parser")
+
 
 class RTTIParser(object):
     RTTI_OBJ_STRUC_NAME = "rtti_obj"
@@ -33,7 +35,7 @@ class RTTIParser(object):
         rtti_obj = cls.parse_typeinfo(typeinfo)
         if rtti_obj is None:
             return
-        logging.info("%s: Parsed typeinfo", rtti_obj.name)
+        log.info("%s: Parsed typeinfo", rtti_obj.name)
         cls.found_classes.add(rtti_obj.typeinfo)
         for parent_typeinfo, _, offset in rtti_obj.raw_parents:
             parent_updated_name = None
@@ -49,7 +51,7 @@ class RTTIParser(object):
             if parent_updated_name is not None:
                 rtti_obj.updated_parents.append((parent_updated_name, offset))
 
-        logging.debug("%s: Finish setup parents", rtti_obj.name)
+        log.debug("%s: Finish setup parents", rtti_obj.name)
         if not rtti_obj.create_structs():
             return False
         rtti_obj.make_rtti_obj_pretty()
@@ -75,7 +77,7 @@ class RTTIParser(object):
         self.name = idc.get_struc_name(self.struct_id)
         self.struct_ptr = ida_struct.get_struc(self.struct_id)
         if self.struct_ptr is None:
-            logging.exception("self.struct_ptr is None at %s", self.name)
+            log.exception("self.struct_ptr is None at %s", self.name)
         previous_parent_offset = 0
         previous_parent_size = 0
         previous_parent_struct_id = BADADDR
@@ -90,7 +92,7 @@ class RTTIParser(object):
             baseclass_id = ida_struct.get_struc_id(parent_name)
             baseclass_size = ida_struct.get_struc_size(baseclass_id)
             if baseclass_id == BADADDR or baseclass_size == 0:
-                logging.warning(
+                log.warning(
                     "bad struct id or size: %s(0x%x:%s) - %s, %d",
                     self.name,
                     parent_offset,
@@ -114,7 +116,7 @@ class RTTIParser(object):
             if self.try_parse_vtable(xref) is not None:
                 is_vtable_found = True
         if not is_vtable_found:
-            logging.debug(
+            log.debug(
                 "find_vtable(%s): Couldn't find any vtable ->" " Interface!", self.name
             )
             if len(self.updated_parents) == 0:
@@ -185,9 +187,9 @@ class GccRTTIParser(RTTIParser):
     @classmethod
     def build_all(cls):
         for class_type in cls.types:
-            logging.debug("Starting :%s %s" % (class_type, hex(class_type)))
+            log.debug("Starting :%s %s" % (class_type, hex(class_type)))
             cls.build_class_type(class_type)
-            logging.info("Done %s", class_type)
+            log.info("Done %s", class_type)
 
     @classmethod
     @utils.batchmode
@@ -196,7 +198,7 @@ class GccRTTIParser(RTTIParser):
         for xref in idautils.XrefsTo(class_type - cls.OFFSET_FROM_TYPEINF_SYM):
             if (idx + 1) % 200 == 0:
                 # idc.batch(0)
-                logging.info("\t Done %s", idx)
+                log.info("\t Done %s", idx)
                 # ida_loader.save_database(None, 0)
                 # idc.batch(1)
             if utils.get_ptr(xref.frm) != class_type:
@@ -204,7 +206,7 @@ class GccRTTIParser(RTTIParser):
             try:
                 cls.extract_rtti_info_from_typeinfo(xref.frm)
             except Exception as e:
-                logging.exception("Exception at 0x%x:", xref.frm)
+                log.exception("Exception at 0x%x:", xref.frm)
             idx += 1
 
     @classmethod

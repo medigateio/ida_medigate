@@ -21,6 +21,8 @@ import idc
 
 from idc import BADADDR
 
+log = logging.getLogger("ida_medigate.utils")
+
 MAX_MEMBER_INDEX = 250
 
 def get_word_len():
@@ -44,11 +46,11 @@ def get_word_len():
 WORD_LEN = get_word_len()
 
 if WORD_LEN == 4:
-    logging.debug("is 32 bit")
+    log.debug("is 32 bit")
 elif WORD_LEN == 8:
-    logging.debug("is 64 bit")
+    log.debug("is 64 bit")
 else:
-    logging.error("Unknown address size")
+    log.error("Unknown address size")
 
 
 def get_word(ea):
@@ -131,11 +133,11 @@ def get_typeinf_ptr(typeinf):
     if isinstance(typeinf, str):
         typeinf = get_typeinf(typeinf)
     if typeinf is None:
-        logging.warning("Couldn't find typeinf %s", old_typeinf or typeinf)
+        log.warning("Couldn't find typeinf %s", old_typeinf or typeinf)
         return None
     tif = idaapi.tinfo_t()
     if not tif.create_ptr(typeinf):
-        logging.warning("Couldn't create ptr for typeinf %s", old_typeinf or typeinf)
+        log.warning("Couldn't create ptr for typeinf %s", old_typeinf or typeinf)
         return None
     return tif
 
@@ -146,7 +148,7 @@ def get_func_details(func_ea):
         return None
     func_details = idaapi.func_type_data_t()
     if not xfunc.type.get_func_details(func_details):
-        logging.warning("Couldn't get func type details %X", func_ea)
+        log.warning("Couldn't get func type details %X", func_ea)
         return None
     return func_details
 
@@ -154,10 +156,10 @@ def get_func_details(func_ea):
 def update_func_details(func_ea, func_details):
     function_tinfo = idaapi.tinfo_t()
     if not function_tinfo.create_func(func_details):
-        logging.warning("Couldn't create func from details %X", func_ea)
+        log.warning("Couldn't create func from details %X", func_ea)
         return None
     if not ida_typeinf.apply_tinfo(func_ea, function_tinfo, idaapi.TINFO_DEFINITE):
-        logging.warning("Couldn't apply func tinfo %X", func_ea)
+        log.warning("Couldn't apply func tinfo %X", func_ea)
         return None
     return function_tinfo
 
@@ -175,13 +177,13 @@ def add_to_struct(
     flag = idaapi.FF_DWORD
     member_size = WORD_LEN
     if member_type is not None and (member_type.is_struct() or member_type.is_union()):
-        logging.debug("Is struct!")
+        log.debug("Is struct!")
         substruct = extract_struct_from_tinfo(member_type)
         if substruct is not None:
             flag = idaapi.FF_STRUCT
             mt = ida_nalt.opinfo_t()
             mt.tid = substruct.id
-            logging.debug(
+            log.debug(
                 "Is struct: %s/%d", ida_struct.get_struc_name(substruct.id), substruct.id,
             )
             member_size = ida_struct.get_struc_size(substruct.id)
@@ -200,14 +202,14 @@ def add_to_struct(
     member_ptr = ida_struct.get_member(struct, offset)
     if overwrite and member_ptr:
         if ida_struct.get_member_name(member_ptr.id) != member_name:
-            logging.debug("Overwriting!")
+            log.debug("Overwriting!")
             ret_val = ida_struct.set_member_name(struct, offset, member_name)
             i = 0
             while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
                 new_member_name = "%s_%d" % (member_name, i)
                 i += 1
                 if i > MAX_MEMBER_INDEX:
-                    logging.debug("failed change name")
+                    log.debug("failed change name")
                     return
                 ret_val = ida_struct.set_member_name(struct, offset, new_member_name)
 
@@ -225,7 +227,7 @@ def add_to_struct(
                 struct, new_member_name, offset, flag, mt, member_size
             )
         if ret_val != 0:
-            logging.debug("ret_val: %d", ret_val)
+            log.debug("ret_val: %d", ret_val)
         member_ptr = ida_struct.get_member_by_name(struct, new_member_name)
     if member_type is not None and member_ptr is not None:
         ida_struct.set_member_tinfo(
@@ -236,7 +238,7 @@ def add_to_struct(
 
 def set_func_name(func_ea, new_name):
     if not idc.set_name(func_ea, new_name, ida_name.SN_CHECK | ida_name.SN_FORCE):
-        logging.warn("Couldn't set func name '%s' at %X", new_name, func_ea)
+        log.warn("Couldn't set func name '%s' at %X", new_name, func_ea)
     return idc.get_name(func_ea)
 
 
@@ -281,7 +283,7 @@ def extract_struct_from_tinfo(tinfo):
 def get_member_tinfo(member):
     member_typeinf = idaapi.tinfo_t()
     if not ida_struct.get_member_tinfo(member_typeinf, member):
-        logging.warn("Couldn't get member type info")
+        log.warn("Couldn't get member type info")
         return None
     return member_typeinf
 
@@ -338,9 +340,9 @@ def get_signed_int(ea):
 def expand_struct(struct_id, new_size):
     struct = ida_struct.get_struc(struct_id)
     if struct is None:
-        logging.warning("Struct id 0x%X wasn't found", struct_id)
+        log.warning("Struct id 0x%X wasn't found", struct_id)
         return
-    logging.debug(
+    log.debug(
         "Expanding struc %s, size: 0x%X -> 0x%X",
         ida_struct.get_struc_name(struct_id),
         ida_struct.get_struc_size(struct_id),
@@ -365,7 +367,7 @@ def expand_struct(struct_id, new_size):
                     -1,
                     0,
                 )
-                logging.debug(
+                log.debug(
                     "Delete member (0x%X-0x%X)", member.soff, member.soff + new_size - 1
                 )
                 ida_struct.del_struc_members(
@@ -382,15 +384,15 @@ def expand_struct(struct_id, new_size):
                     ]
                 )
             else:
-                logging.warning("Xref 0x%X wasn't struct_member", xref.frm)
+                log.warning("Xref 0x%X wasn't struct_member", xref.frm)
 
     ret = add_to_struct(
         ida_struct.get_struc(struct_id), None, None, new_size - WORD_LEN
     )
-    logging.debug("Now fix args:")
+    log.debug("Now fix args:")
     for fix_args in fix_list:
         ret = idc.add_struc_member(*fix_args)
-        logging.debug("%s = %d", fix_args, ret)
+        log.debug("%s = %d", fix_args, ret)
         x_struct_id = fix_args[0]
         idc.del_struc_member(x_struct_id, ida_struct.get_struc_size(x_struct_id))
 
@@ -463,11 +465,11 @@ def get_enum_const_name(enum_name, const_value):
         return ""
     enum_id = idc.get_enum(enum_name)
     if enum_id == BADADDR:
-        logging.warn("Enum not found %s", enum_name)
+        log.warn("Enum not found %s", enum_name)
         return ""
     const_id = idc.get_enum_member(enum_id, const_value, 0, ida_enum.DEFMASK)
     if const_id == BADADDR:
-        logging.warn("Enum const not found %s, %X", enum_name, const_value)
+        log.warn("Enum const not found %s, %X", enum_name, const_value)
         return ""
     return idc.get_enum_member_name(const_id)
 
@@ -487,14 +489,14 @@ def force_make_struct(ea, struct_name):
     """@return: True on success, False on failure"""
     sid = idc.get_struc_id(struct_name)
     if sid == BADADDR:
-        logging.warn("Structure not found: %s", struct_name)
+        log.warn("Structure not found: %s", struct_name)
         return False
     size = idc.get_struc_size(sid)
     if not size:
-        logging.warn("Structure with zero size: %s", struct_name)
+        log.warn("Structure with zero size: %s", struct_name)
         return False
     if not ida_bytes.del_items(ea, ida_bytes.DELIT_SIMPLE, size):
-        logging.warn("Failed to delete structure items: %s", struct_name)
+        log.warn("Failed to delete structure items: %s", struct_name)
         return False
     return ida_bytes.create_struct(ea, size, sid)
 
@@ -526,10 +528,10 @@ def refresh_struct(sptr):
         return False
     member_ptr = add_to_struct(sptr, "dummy")
     if not member_ptr:
-        logging.warn("Failed to add dummy field to struct 0x%X", sptr.id)
+        log.warn("Failed to add dummy field to struct 0x%X", sptr.id)
         return False
     if not ida_struct.del_struc_member(sptr, member_ptr.soff):
-        logging.error("Failed to delete dummy member at the end of struct 0x%X", sptr.id)
+        log.error("Failed to delete dummy member at the end of struct 0x%X", sptr.id)
         return False
     return True
 
