@@ -183,21 +183,20 @@ def install_vtables_union(
         old_vtable_sptr.id, old_vtable_class_name + "_orig"
     ):
         logging.exception(
-            f"Failed changing {old_vtable_class_name}->"
-            f"{old_vtable_class_name+'orig'}"
+            "Failed changing %s->%sorig", old_vtable_class_name, old_vtable_class_name,
         )
         return -1
     vtables_union_id = utils.get_or_create_struct_id(vtables_union_name, True)
     vtable_member_tinfo = utils.get_typeinf(old_vtable_class_name + "_orig")
     if vtables_union_id == BADADDR:
         logging.exception(
-            f"Cannot create union vtable for {class_name}(){vtables_union_name}"
+            "Cannot create union vtable for %s()%s", class_name, vtables_union_name,
         )
         return -1
 
     vtables_union = ida_struct.get_struc(vtables_union_id)
     if not vtables_union:
-        logging.exception(f"Could retrieve vtables union for {class_name}")
+        logging.exception("Could retrieve vtables union for %s", class_name)
     if vtable_member_tinfo is not None:
         vtables_union_vtable_field_name = get_class_vtables_field_name(class_name)
     else:
@@ -379,7 +378,7 @@ def post_func_type_change(pfn):
 
 
 def make_funcptr_pt(func, this_type):
-    return utils.get_typeinf(f"void (*)({str(this_type)} *)")
+    return utils.get_typeinf("void (*)(%s *)" % str(this_type))
 
 
 def update_vtable_struct(
@@ -417,7 +416,7 @@ def update_vtable_struct(
         else:
             func_ptr = make_funcptr_pt(func, this_type)
         if add_dummy_member:
-            utils.add_to_struct(vtable_struct, f"dummy_{dummy_i}", func_ptr)
+            utils.add_to_struct(vtable_struct, "dummy_%d" % dummy_i, func_ptr)
             dummy_i += 1
         if is_first_member:
             # We did an hack for vtables contained in union vtable with one dummy member
@@ -612,7 +611,7 @@ def add_baseclass(class_name, baseclass_name, baseclass_offset=0, to_refresh=Fal
                                  offset=baseclass_offset,
                                  overwrite=True)
     if not member:
-        logging.debug(f"add_baseclass({class_name}. {baseclass_name}): member not found")
+        logging.debug("add_baseclass(%s. %s): member not found", class_name, baseclass_name)
         return False
     member.props |= ida_struct.MF_BASECLASS
     if to_refresh:

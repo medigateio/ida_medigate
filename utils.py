@@ -182,7 +182,7 @@ def add_to_struct(
             mt = ida_nalt.opinfo_t()
             mt.tid = substruct.id
             logging.debug(
-                f"Is struct: {ida_struct.get_struc_name(substruct.id)}/{substruct.id}"
+                "Is struct: %s/%d", ida_struct.get_struc_name(substruct.id), substruct.id,
             )
             member_size = ida_struct.get_struc_size(substruct.id)
     elif WORD_LEN == 4:
@@ -225,7 +225,7 @@ def add_to_struct(
                 struct, new_member_name, offset, flag, mt, member_size
             )
         if ret_val != 0:
-            logging.debug(f"ret_val: {ret_val}")
+            logging.debug("ret_val: %d", ret_val)
         member_ptr = ida_struct.get_member_by_name(struct, new_member_name)
     if member_type is not None and member_ptr is not None:
         ida_struct.set_member_tinfo(

@@ -1,9 +1,11 @@
+from __future__ import print_function
+
+
 try:
     from ida_medigate.cpp_plugin.plugin import CPPPlugin
 
     def PLUGIN_ENTRY():
         return CPPPlugin()
-
 
 except ImportError:
     print(
