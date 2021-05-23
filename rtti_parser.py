@@ -16,6 +16,18 @@ log = logging.getLogger("ida_medigate")
 class RTTIParser(object):
     RTTI_OBJ_STRUC_NAME = "rtti_obj"
 
+    def __init__(self, parents, typeinfo_ea):
+        self.raw_parents = []
+        self.updated_parents = []
+        self.typeinfo_ea = typeinfo_ea
+        self.orig_name = self.name = self.get_typeinfo_name(self.typeinfo_ea)
+        for parent_typeinfo_ea, parent_offset in parents:
+            parent_name = self.get_typeinfo_name(parent_typeinfo_ea)
+            if parent_name is not None:
+                self.raw_parents.append((parent_typeinfo_ea, parent_name, parent_offset))
+        self.struct_id = None
+        self.struct_ptr = None
+
     @classmethod
     def init_parser(cls):
         cls.found_classes = set()
@@ -54,18 +66,6 @@ class RTTIParser(object):
         rtti_obj.make_rtti_obj_pretty()
         rtti_obj.find_vtables()
         return rtti_obj
-
-    def __init__(self, parents, typeinfo_ea):
-        self.raw_parents = []
-        self.updated_parents = []
-        self.typeinfo_ea = typeinfo_ea
-        self.orig_name = self.name = self.get_typeinfo_name(self.typeinfo_ea)
-        for parent_typeinfo_ea, parent_offset in parents:
-            parent_name = self.get_typeinfo_name(parent_typeinfo_ea)
-            if parent_name is not None:
-                self.raw_parents.append((parent_typeinfo_ea, parent_name, parent_offset))
-        self.struct_id = None
-        self.struct_ptr = None
 
     def create_structs(self):
         self.struct_id = utils.add_struc_retry(self.name)
