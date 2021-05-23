@@ -24,25 +24,25 @@ class RTTIParser(object):
     def extract_rtti_info_from_data(cls, ea=None):
         if ea is None:
             ea = idc.here()
-        typeinfo = cls.parse_rtti_header(ea)
-        return cls.extract_rtti_info_from_typeinfo(typeinfo)
+        typeinfo_ea = cls.parse_rtti_header(ea)
+        return cls.extract_rtti_info_from_typeinfo(typeinfo_ea)
 
     @classmethod
-    def extract_rtti_info_from_typeinfo(cls, typeinfo):
-        if typeinfo in cls.found_classes:
+    def extract_rtti_info_from_typeinfo(cls, typeinfo_ea):
+        if typeinfo_ea in cls.found_classes:
             return None
-        rtti_obj = cls.parse_typeinfo(typeinfo)
+        rtti_obj = cls.parse_typeinfo(typeinfo_ea)
         if rtti_obj is None:
             return None
         log.info("%s: Parsed typeinfo", rtti_obj.name)
-        cls.found_classes.add(rtti_obj.typeinfo)
-        for parent_typeinfo, _, offset in rtti_obj.raw_parents:
+        cls.found_classes.add(rtti_obj.typeinfo_ea)
+        for parent_typeinfo_ea, _, offset in rtti_obj.raw_parents:
             parent_updated_name = None
-            parent_rtti_obj = cls.extract_rtti_info_from_typeinfo(parent_typeinfo)
+            parent_rtti_obj = cls.extract_rtti_info_from_typeinfo(parent_typeinfo_ea)
             if parent_rtti_obj:
                 parent_updated_name = parent_rtti_obj.name
             else:
-                built_rtti_obj_name = ida_name.get_ea_name(parent_typeinfo)
+                built_rtti_obj_name = ida_name.get_ea_name(parent_typeinfo_ea)
                 if built_rtti_obj_name.endswith(cls.RTTI_OBJ_STRUC_NAME):
                     parent_updated_name = built_rtti_obj_name.rstrip("_" + cls.RTTI_OBJ_STRUC_NAME)
             if parent_updated_name is not None:
@@ -55,15 +55,15 @@ class RTTIParser(object):
         rtti_obj.find_vtables()
         return rtti_obj
 
-    def __init__(self, parents, typeinfo):
+    def __init__(self, parents, typeinfo_ea):
         self.raw_parents = []
         self.updated_parents = []
-        self.typeinfo = typeinfo
-        self.orig_name = self.name = self.get_typeinfo_name(self.typeinfo)
-        for parent_typeinf, parent_offset in parents:
-            parent_name = self.get_typeinfo_name(parent_typeinf)
+        self.typeinfo_ea = typeinfo_ea
+        self.orig_name = self.name = self.get_typeinfo_name(self.typeinfo_ea)
+        for parent_typeinfo_ea, parent_offset in parents:
+            parent_name = self.get_typeinfo_name(parent_typeinfo_ea)
             if parent_name is not None:
-                self.raw_parents.append((parent_typeinf, parent_name, parent_offset))
+                self.raw_parents.append((parent_typeinfo_ea, parent_name, parent_offset))
         self.struct_id = None
         self.struct_ptr = None
 
@@ -110,7 +110,7 @@ class RTTIParser(object):
 
     def find_vtables(self):
         is_vtable_found = False
-        for xref in utils.drefs_to(self.typeinfo):
+        for xref in utils.drefs_to(self.typeinfo_ea):
             if self.try_parse_vtable(xref) is not None:
                 is_vtable_found = True
         if not is_vtable_found:
@@ -135,10 +135,10 @@ class RTTIParser(object):
         pass
 
     @classmethod
-    def parse_typeinfo(cls, typeinfo):
+    def parse_typeinfo(cls, typeinfo_ea):
         pass
 
-    def get_typeinfo_name(self, typeinfo):
+    def get_typeinfo_name(self, typeinfo_ea):
         pass
 
 
@@ -204,21 +204,21 @@ class GccRTTIParser(RTTIParser):
     @classmethod
     def parse_rtti_header(cls, ea):
         # offset = cls.read_offset(ea)
-        typeinfo = cls.get_typeinfo_ea(ea)
-        return typeinfo
+        typeinfo_ea = cls.get_typeinfo_ea(ea)
+        return typeinfo_ea
 
     @classmethod
-    def parse_typeinfo(cls, typeinfo):
-        typeinfo_type = utils.get_ptr(typeinfo + cls.CLASS_TYPE_TYPEINFO_OFFSET)
+    def parse_typeinfo(cls, typeinfo_ea):
+        typeinfo_type = utils.get_ptr(typeinfo_ea + cls.CLASS_TYPE_TYPEINFO_OFFSET)
         if typeinfo_type == cls.type_none:
             parents = []
         elif typeinfo_type == cls.type_si:
-            parents = cls.parse_si_typeinfo(typeinfo)
+            parents = cls.parse_si_typeinfo(typeinfo_ea)
         elif typeinfo_type == cls.type_vmi:
-            parents = cls.parse_vmi_typeinfo(typeinfo)
+            parents = cls.parse_vmi_typeinfo(typeinfo_ea)
         else:
             return None
-        return GccRTTIParser(parents, typeinfo)
+        return GccRTTIParser(parents, typeinfo_ea)
 
     @classmethod
     def parse_si_typeinfo(cls, typeinfo_ea):
@@ -243,18 +243,17 @@ class GccRTTIParser(RTTIParser):
     def get_typeinfo_ea(cls, ea):
         return utils.get_ptr(ea + cls.RECORD_TYPEINFO_OFFSET)
 
-    @classmethod
-    def get_typeinfo_name(cls, typeinfo_ea):
-        name_ea = utils.get_ptr(typeinfo_ea + cls.CLASS_TYPE_NAME_OFFSET)
+    def get_typeinfo_name(self, typeinfo_ea):
+        name_ea = utils.get_ptr(typeinfo_ea + self.CLASS_TYPE_NAME_OFFSET)
         if name_ea is None or name_ea == BADADDR:
             mangled_class_name = ida_name.get_ea_name(typeinfo_ea)
         else:
             mangled_class_name = "_Z" + idc.get_strlit_contents(name_ea).decode()
         class_name = ida_name.demangle_name(mangled_class_name, idc.INF_LONG_DN)
-        return cls.strip_class_name(class_name)
+        return GccRTTIParser.strip_class_name(class_name)
 
-    @classmethod
-    def strip_class_name(cls, cls_name):
+    @staticmethod
+    def strip_class_name(class_name):
         # pre_dict = {"`typeinfo for": ":"}
         words_dict = {
             "`anonymous namespace'": "ANONYMOUS",
@@ -274,10 +273,10 @@ class GccRTTIParser(RTTIParser):
             "]": "P",
         }
         for target, strip in words_dict.items():
-            cls_name = cls_name.replace(target, strip)
+            class_name = class_name.replace(target, strip)
         for target, strip in chars_dict.items():
-            cls_name = cls_name.replace(target, strip)
-        return cls_name
+            class_name = class_name.replace(target, strip)
+        return class_name
 
     def try_parse_vtable(self, ea):
         functions_ea = ea + utils.WORD_LEN
