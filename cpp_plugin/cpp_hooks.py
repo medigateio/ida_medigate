@@ -41,7 +41,7 @@ class CPPHooks(ida_idp.IDB_Hooks):
         cpp_utils.post_struct_member_type_change(mptr)
         return 0
 
-    def ti_changed(self, ea, typeinf, fnames):
+    def ti_changed(self, ea, type, fnames):
         if self.is_decompiler_on:
             res = ida_struct.get_member_by_id(ea)
             if res is not None:
