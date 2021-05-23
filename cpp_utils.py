@@ -347,15 +347,14 @@ def post_struct_member_type_change(member):
 
 
 @batchmode
-def post_func_type_change(pfn):
-    ea = pfn.start_ea
-    xrefs = idautils.XrefsTo(ea, ida_xref.XREF_USER)
+def post_func_type_change(funcea):
+    xrefs = idautils.XrefsTo(funcea, ida_xref.XREF_USER)
     xrefs = [xref for xref in xrefs if xref.type == ida_xref.dr_I and xref.user == 1]
     args_list = []
     if not xrefs:
         return None, []
     try:
-        xfunc = ida_hexrays.decompile(ea)
+        xfunc = ida_hexrays.decompile(funcea)
         func_ptr_typeinf = utils.get_typeinf_ptr(xfunc.type)
         for xref in xrefs:
             member, _, struct = ida_struct.get_member_by_id(xref.frm)

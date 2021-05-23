@@ -23,7 +23,8 @@ class CPPHooks(ida_idp.IDB_Hooks):
         return 0
 
     def func_updated(self, pfn):
-        func, args_list = cpp_utils.post_func_type_change(pfn)
+        funcea = pfn.start_ea
+        func, args_list = cpp_utils.post_func_type_change(funcea)
         self.unhook()
         for args in args_list:
             func(*args)
