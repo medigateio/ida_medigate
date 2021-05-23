@@ -1,5 +1,16 @@
 # ida_medigate C++ plugin for IDA Pro
 
+## Fork Motivation
+
+[medigate-io](https://github.com/medigate-io) created an awesome plugin! Unfortunatelly, it only works in IDA 7.5+ with Python 3.
+As some of us are still using old IDA with outdated Python 2.7, I've decided to downport the plugin to support both IDA7.0 (with Python 2.7) and IDA7.5 (with Python 3).
+
+Source code is formatted with `black` formatter and checked with `pylint` and `flake8`.
+You can format and check the code in one step by calling `./format_code.sh`, or just check it with `./check_code.sh`.
+
+I've also added `install.sh` and `uninstall.sh` scripts, that simply copy/remove `medigate_cpp_plugin.py` to/from IDA's plugins directory.
+Both scripts require `$IDAPATH` environment variable pointing to IDA's home folder.
+
 ## Motivation And Background
 
 Reverse engineering of compiled C++  code is not fun. Static Reverse engineering of compiled C++ code is **frustrating.** The main reason which makes it so hard is virtual functions. In contrast to compiled C code, there is no clear code flow. Too many times one can spend much time trying to understand what is the next virtual function is called, rather than just see the function like in compiled C code.
