@@ -405,6 +405,7 @@ strings = None  # dict(str, StringItem)
 
 
 def refresh_strings():
+    # pylint: disable=global-statement
     global strings
     strings = {}
     for i in idautils.Strings():
@@ -423,10 +424,12 @@ def get_strings(s):
 
 def get_strings_xrefs(s, filter_func=None):
     """filter_func(x,s) choose x if True for magic str (s)"""
-    if filter_func is None:
 
-        def filter_func(x, string):
-            return str(x) == string
+    def default_filter_func(x, string):
+        return str(x) == string
+
+    if filter_func is None:
+        filter_func = default_filter_func
 
     xrefs = set()
     for i in get_strings(s):
@@ -519,8 +522,7 @@ def get_selected_range_or_line():
     selection, startaddr, endaddr = ida_kernwin.read_range_selection(None)
     if selection:
         return startaddr, endaddr
-    else:
-        return ida_kernwin.get_screen_ea(), None
+    return ida_kernwin.get_screen_ea(), None
 
 
 def refresh_struct(sptr):
