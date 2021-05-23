@@ -159,6 +159,8 @@ def get_interface_empty_vtable_name():
 
 
 def install_vtables_union(class_name, class_vtable_member=None, vtable_member_tinfo=None, offset=0):
+    # pylint: disable=too-many-locals
+    # TODO: refactor
     log.debug(
         "install_vtables_union(%s, %s, %s)",
         class_name,
@@ -386,6 +388,8 @@ def update_vtable_struct(
     parent_name=None,
     add_func_this=True,
 ):
+    # pylint: disable=too-many-arguments,too-many-locals,too-many-branches
+    # TODO: refactor
     is_first_member = True
     if this_type is None:
         this_type = utils.get_typeinf_ptr(class_name)

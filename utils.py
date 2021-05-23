@@ -165,7 +165,6 @@ def update_func_details(func_ea, func_details):
     return function_tinfo
 
 
-# TODO: refactor
 def add_to_struct(
     struct,
     member_name,
@@ -174,6 +173,8 @@ def add_to_struct(
     is_offset=False,
     overwrite=False,
 ):
+    # pylint: disable=too-many-branches
+    # TODO: refactor
     mt = None
     flag = idaapi.FF_DWORD
     member_size = WORD_LEN
