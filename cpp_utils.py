@@ -534,7 +534,6 @@ def create_vtable_struct(sptr, name, vtable_offset, parent_name=None):
     vtable_details = find_vtable_at_offset(sptr, vtable_offset)
     parent_vtable_member = None
     parent_vtable_struct = None
-    parent_name = None
     parents_chain = None
     if vtable_details is not None:
         log.debug("Found parent vtable %s 0x%X", name, vtable_offset)
@@ -545,7 +544,7 @@ def create_vtable_struct(sptr, name, vtable_offset, parent_name=None):
         ) = vtable_details
     else:
         log.debug("Couldn't found parent vtable %s 0x%X", name, vtable_offset)
-    if parent_vtable_member is not None:
+    if parent_vtable_struct is not None and parent_vtable_member is not None:
         parent_name = ida_struct.get_struc_name(parent_vtable_struct.id)
     vtable_name = get_class_vtable_struct_name(name, vtable_offset)
     if vtable_offset == 0:
@@ -563,8 +562,8 @@ def create_vtable_struct(sptr, name, vtable_offset, parent_name=None):
         log.exception("Couldn't create vtable struct %s", vtable_name)
     vtable_struct = ida_struct.get_struc(vtable_id)
     if parents_chain:
-        for parent_name, offset in parents_chain:
-            add_child_vtable(parent_name, name, vtable_id, offset)
+        for v_parent_name, offset in parents_chain:
+            add_child_vtable(v_parent_name, name, vtable_id, offset)
     else:
         add_class_vtable(sptr, vtable_name, vtable_offset)
 
