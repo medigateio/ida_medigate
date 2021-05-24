@@ -44,12 +44,16 @@ class CPPHooks(ida_idp.IDB_Hooks):
     def ti_changed(self, ea, type, fnames):
         if self.is_decompiler_on:
             res = ida_struct.get_member_by_id(ea)
-            if res is not None:
-                m, name, sptr = res
-                if sptr.is_frame():
-                    func = ida_funcs.get_func(ida_frame.get_func_by_frame(sptr.id))
-                    if func is not None:
-                        return self.func_updated(func)
+            if res and res[0]:
+                member = res[0]
+                struct = ida_struct.get_member_struc(ida_struct.get_member_fullname(member.id))
+                assert struct
+                if struct.is_frame():
+                    func = ida_funcs.get_func(ida_frame.get_func_by_frame(struct.id))
+                    if not func:
+                        log.warning("Couldn't get func by frame 0x%X", struct.id)
+                        return 0
+                    return self.func_updated(func)
             elif utils.is_func_start(ea):
                 return self.func_updated(ida_funcs.get_func(ea))
         return 0

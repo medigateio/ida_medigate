@@ -320,13 +320,20 @@ def post_func_name_change(new_name, ea):
     xrefs = [xref for xref in xrefs if xref.type == ida_xref.dr_I and xref.user == 1]
     args_list = []
     for xref in xrefs:
-        member, _, _ = ida_struct.get_member_by_id(xref.frm)
-        if member is not None:
-            # In IDA7.0 get_member_by_id() returns some wrong struct
-            # So we have to get it from the member's full name instead
-            # This approach works both in IDA7.0 and IDA7.5 SP3
-            struct = ida_struct.get_member_struc(ida_struct.get_member_fullname(member.id))
-            args_list.append([struct, member.get_soff(), new_name])
+        res = ida_struct.get_member_by_id(xref.frm)
+        if not res or not res[0]:
+            log.warning("Xref from %08X wasn't struct_member", xref.frm)
+            continue
+        # In IDA7.0 get_member_by_id() returns incorrect struct, which,
+        # when accessed, causes IDA to crash.
+        # In IDA7.5 SP3 get_member_by_id() returns correct struct.
+        # So it looks like an IDA bug.
+        # To avoid crashes, we get struct from the member's full name.
+        # This approach works both in IDA7.0 and IDA7.5 SP3
+        member = res[0]
+        struct = ida_struct.get_member_struc(ida_struct.get_member_fullname(member.id))
+        assert struct
+        args_list.append([struct, member.get_soff(), new_name])
 
     return utils.set_member_name, args_list
 
@@ -363,10 +370,16 @@ def post_func_type_change(funcea):
         xfunc = ida_hexrays.decompile(funcea)
         func_ptr_typeinf = utils.get_typeinf_ptr(xfunc.type)
         for xref in xrefs:
-            member, _, struct = ida_struct.get_member_by_id(xref.frm)
-            if member is not None and struct is not None:
-                args_list.append([struct, member, 0, func_ptr_typeinf, idaapi.TINFO_DEFINITE])
-    except Exception:  # pylint: disable=broad-except
+            res = ida_struct.get_member_by_id(xref.frm)
+            if not res or not res[0]:
+                log.warning("Can't get struct for member %X", member.id)
+                continue
+            member = res[0]
+            struct = ida_struct.get_member_struc(ida_struct.get_member_fullname(member.id))
+            assert struct
+            args_list.append([struct, member, 0, func_ptr_typeinf, idaapi.TINFO_DEFINITE])
+    except ida_hexrays.DecompilationFailure:
+        # TODO: get func type even if decompilation fails
         pass
     return ida_struct.set_member_tinfo, args_list
 

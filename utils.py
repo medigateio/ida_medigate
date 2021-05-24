@@ -356,37 +356,43 @@ def expand_struct(struct_id, new_size):
     xrefs = idautils.XrefsTo(struct.id)
     for xref in xrefs:
         if xref.type == ida_xref.dr_R and xref.user == 0 and xref.iscode == 0:
-            member, _, x_struct = ida_struct.get_member_by_id(xref.frm)
-            if x_struct is not None:
-                old_name = ida_struct.get_member_name(member.id)
-                offset = member.soff
-                marker_name = "marker_%d" % random.randint(0, 0xFFFFFF)
-                idc.add_struc_member(
+            res = ida_struct.get_member_by_id(xref.frm)
+            if not res or not res[0]:
+                log.warning("Xref from %08X wasn't struct_member", xref.frm)
+                continue
+            member = res[0]
+            x_struct = ida_struct.get_member_struc(ida_struct.get_member_fullname(member.id))
+            assert x_struct
+            old_name = ida_struct.get_member_name(member.id)
+            offset = member.soff
+            # FIXME: why use random here?
+            marker_name = "marker_%d" % random.randint(0, 0xFFFFFF)
+            # FIXME: check if add_struc_member actually added a member
+            idc.add_struc_member(
+                x_struct.id,
+                marker_name,
+                member.soff + new_size,
+                idaapi.FF_DATA | idaapi.FF_BYTE,
+                -1,
+                0,
+            )
+            log.debug(
+                "Delete member (0x%X-0x%X)",
+                member.soff,
+                member.soff + new_size - 1,
+            )
+            # FIXME: check if struc member actually deleted
+            ida_struct.del_struc_members(x_struct, member.soff, member.soff + new_size - 1)
+            fix_list.append(
+                [
                     x_struct.id,
-                    marker_name,
-                    member.soff + new_size,
-                    idaapi.FF_DATA | idaapi.FF_BYTE,
-                    -1,
-                    0,
-                )
-                log.debug(
-                    "Delete member (0x%X-0x%X)",
-                    member.soff,
-                    member.soff + new_size - 1,
-                )
-                ida_struct.del_struc_members(x_struct, member.soff, member.soff + new_size - 1)
-                fix_list.append(
-                    [
-                        x_struct.id,
-                        old_name,
-                        offset,
-                        idaapi.FF_STRUCT | idaapi.FF_DATA,
-                        struct_id,
-                        new_size,
-                    ]
-                )
-            else:
-                log.warning("Xref at %08X wasn't struct_member", xref.frm)
+                    old_name,
+                    offset,
+                    idaapi.FF_STRUCT | idaapi.FF_DATA,
+                    struct_id,
+                    new_size,
+                ]
+            )
 
     ret = add_to_struct(ida_struct.get_struc(struct_id), None, None, new_size - WORD_LEN)
     log.debug("Now fix args:")
