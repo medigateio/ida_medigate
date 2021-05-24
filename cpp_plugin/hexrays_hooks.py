@@ -308,9 +308,9 @@ def _callback(*args):
     return 0
 
 
-def install_hexrays_hook():
+def install_hexrays_hooks():
     return ida_hexrays.install_hexrays_callback(_callback)
 
 
-def remove_hexrays_hook():
+def remove_hexrays_hooks():
     return ida_hexrays.remove_hexrays_callback(_callback)

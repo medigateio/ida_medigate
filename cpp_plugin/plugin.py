@@ -6,8 +6,8 @@ import idaapi
 from .cpp_hooks import CPPHooks
 from .cpp_ui_hooks import CPPUIHooks
 from .hexrays_hooks import (
-    install_hexrays_hook,
-    remove_hexrays_hook,
+    install_hexrays_hooks,
+    remove_hexrays_hooks,
 )
 
 log = logging.getLogger("ida_medigate")
@@ -34,8 +34,8 @@ class CPPPlugin(ida_idaapi.plugin_t):
     wanted_hotkey = ""
 
     def __init__(self):
-        self.core_hook = None
-        self.gui_hook = None
+        self.cpp_hooks = None
+        self.gui_hooks = None
         self.hooking = False
         self.is_decompiler_on = False
 
@@ -49,8 +49,8 @@ class CPPPlugin(ida_idaapi.plugin_t):
         else:
             log.warn("Hex-Rays decompiler is not available")
 
-        self.core_hook = CPPHooks(self.is_decompiler_on)
-        self.gui_hook = CPPUIHooks()
+        self.cpp_hooks = CPPHooks(self.is_decompiler_on)
+        self.gui_hooks = CPPUIHooks()
 
         if not self.hook():
             log.warn("Failed to set hooks")
@@ -72,22 +72,22 @@ class CPPPlugin(ida_idaapi.plugin_t):
 
     def hook(self):
         if self.is_decompiler_on:
-            if not install_hexrays_hook():
+            if not install_hexrays_hooks():
                 log.warn("Failed to install decompiler hooks")
-        if not self.core_hook.hook():
+        if not self.cpp_hooks.hook():
             log.warn("Failed to install core hooks")
-        if not self.gui_hook.hook():
+        if not self.gui_hooks.hook():
             log.warn("Failed to install gui hooks")
         self.hooking = True
         return True
 
     def unhook(self):
         if self.is_decompiler_on:
-            if not remove_hexrays_hook():
+            if not remove_hexrays_hooks():
                 log.warn("Failed to remove decompiler hooks")
-        if not self.core_hook.unhook():
+        if not self.cpp_hooks.unhook():
             log.warn("Failed to remove core hooks")
-        if not self.gui_hook.unhook():
+        if not self.gui_hooks.unhook():
             log.warn("Failed to remove gui hooks")
         self.hooking = False
         return True
