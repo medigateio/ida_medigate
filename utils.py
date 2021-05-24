@@ -23,7 +23,7 @@ from idc import BADADDR
 
 log = logging.getLogger("ida_medigate")
 
-MAX_MEMBER_INDEX = 250
+MAX_SET_MEMBER_NAME_ATTEMPTS = 250
 
 
 def get_word_len():
@@ -212,7 +212,7 @@ def add_to_struct(
             while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
                 new_member_name = "%s_%d" % (member_name, i)
                 i += 1
-                if i > MAX_MEMBER_INDEX:
+                if i > MAX_SET_MEMBER_NAME_ATTEMPTS:
                     log.debug("failed change name")
                     return None
                 ret_val = ida_struct.set_member_name(struct, offset, new_member_name)
@@ -225,7 +225,7 @@ def add_to_struct(
         while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
             new_member_name = "%s_%d" % (member_name, i)
             i += 1
-            if i > MAX_MEMBER_INDEX:
+            if i > MAX_SET_MEMBER_NAME_ATTEMPTS:
                 return None
             ret_val = ida_struct.add_struc_member(
                 struct, new_member_name, offset, flag, mt, member_size
@@ -307,7 +307,7 @@ def get_member_substruct(member):
 def set_member_name(struct, offset, new_name):
     if ida_struct.set_member_name(struct, offset, new_name):
         return True
-    for i in range(MAX_MEMBER_INDEX):
+    for i in range(MAX_SET_MEMBER_NAME_ATTEMPTS):
         if ida_struct.set_member_name(struct, offset, new_name + "_%d" % i):
             return True
     return False
