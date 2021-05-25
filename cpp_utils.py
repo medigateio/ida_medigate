@@ -16,6 +16,19 @@ from .utils import batchmode
 
 log = logging.getLogger("ida_medigate")
 
+
+""" 
+IDA7.0 Bugs
+
+ida_struct.get_member_by_id()  @return: tuple(mptr, member_fullname, sptr)
+    IDA7.0:
+        sptr points to some wrong struct. Attempts to access this struct lead to IDA crash
+    In IDA7.5 SP3:
+        sptr points to a proper struct
+
+"""
+
+
 VTABLE_KEYWORD = "vtbl"
 VTABLE_UNION_KEYWORD = "VTABLES"
 # VTABLES_UNION_VTABLE_FIELD_POSTFIX = "_vtable"

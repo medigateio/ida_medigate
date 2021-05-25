@@ -8,6 +8,52 @@ from .. import cpp_utils, utils
 log = logging.getLogger("ida_medigate")
 
 
+"""
+Function renamed:
+    IDA7.0:
+        renamed
+    IDA7.5 SP3:
+        renamed
+
+Function type changed (Y on the whole function):
+    IDA7.0:
+        ti_changed
+        func_udpated
+        for each arg in function frame:
+            renaming_struc_member
+            renamed
+    IDA7.5 SP3:
+        (the same)
+
+Function arg renamed or type changed (Y on the function arg):
+    IDA7.0:
+        ti_changed (function)
+        func_udpated
+    IDA7.5 SP3:
+        (the same)
+        + sometimes (unpredictable) there might also be the following events:
+            ti_changed (arg)
+            renaming_struc_member (arg)
+            renamed (arg)
+
+Structure member renamed:
+    IDA7.0:
+        renaming_struc_member
+        renamed (only happens if name was successfully set)
+    IDA7.5 SP3:
+        (the same)
+
+Structure member type changed:
+    IDA7.0:
+        struct_member_changed (member tinfo = OLD type!) (seems like a bug in IDA7.0)
+        ti_changed (member tinfo = NEW type)
+    IDA7.5 SP3:
+        ti_changed (member tinfo = NEW type)
+        struct_member_changed (member tinfo = NEW type)
+
+"""
+
+
 class CPPHooks(ida_idp.IDB_Hooks):
     def __init__(self, is_decompiler_on):
         super(CPPHooks, self).__init__()
