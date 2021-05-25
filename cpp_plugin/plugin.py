@@ -24,7 +24,7 @@ class CPPPlugin(ida_idaapi.plugin_t):
     PLUGIN_NAME = "ida_cpp"
     PLUGIN_VERSION = "0.0.1"
     PLUGIN_AUTHORS = "Medigate"
-    TOGGLE_HOTKEY = "CTRL+ALT+C"
+    TOGGLE_HOTKEY = "CTRL+ALT+SHIFT-M"
 
     # These flags specify that the plugin should not have a menu entry
     flags = ida_idaapi.PLUGIN_HIDE
@@ -56,8 +56,7 @@ class CPPPlugin(ida_idaapi.plugin_t):
             log.warn("Failed to set hooks")
             return idaapi.PLUGIN_SKIP
 
-        if not self.install_hotkey():
-            log.warn("Failed to add hotkey")
+        self.install_hotkey()
 
         log.info("Im up")
 
@@ -93,7 +92,10 @@ class CPPPlugin(ida_idaapi.plugin_t):
         return True
 
     def install_hotkey(self):
-        return ida_kernwin.add_hotkey(self.TOGGLE_HOTKEY, self.toggle_hooks)
+        if not ida_kernwin.add_hotkey(self.TOGGLE_HOTKEY, self.toggle_hooks):
+            log.warn("Failed to add hotkey %s", self.TOGGLE_HOTKEY)
+            return False
+        return True
 
     @classmethod
     def description(cls):
