@@ -140,6 +140,11 @@ def get_typeinf(typestr):
 
 
 def deserialize_typeinf(xtype, fields):
+    # tif.deserialize(None, xtype, None) is fine
+    # tif.deserialize(None, None, fields) returns None
+    # tif.deserialize(None, None, None) crashes IDA (tested on IDA7.0 and IDA7.5 SP3)
+    if xtype is None:
+        return None
     tif = ida_typeinf.tinfo_t()
     if not tif.deserialize(None, xtype, fields):
         return None
