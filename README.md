@@ -2,14 +2,23 @@
 
 ## Fork Motivation
 
-[medigate-io](https://github.com/medigate-io) created an awesome plugin! Unfortunatelly, it only works in IDA 7.5+ with Python 3.
-As some of us are still using old IDA with outdated Python 2.7, I've decided to downport the plugin to support both IDA7.0 (with Python 2.7) and IDA7.5 (with Python 3).
+The main reason to create this fork was to add support for IDA7.0 and Python 2.7. Due to bugs in IDA7.0 API plugin keeps crashing IDA when changing types.
+
+Here is the full list of features that I would like to add:
+
+* Add support for Python 2.7
+* Fix changing types crashes IDA7.0
+* Add support for MSVC RTTI
+* Add automatic detection of ctors/dtors, determining structure size from `new operator`
+* Add automatic creation of data structures, filling them with DWORD fields given the total size of the class.
+* Add support for inheritance in data structures.
+* General bug fixing and refactoring.
+* Add automated code checking and formatting.
+
+## Code check
 
 Source code is formatted with `black` formatter and checked with `pylint` and `flake8`.
 You can format and check the code in one step by calling `./format_code.sh`, or just check it with `./check_code.sh`.
-
-I've also added `install.sh` and `uninstall.sh` scripts, that simply copy/remove `medigate_cpp_plugin.py` to/from IDA's plugins directory.
-Both scripts require `$IDAPATH` environment variable pointing to IDA's home folder.
 
 ## Motivation And Background
 
