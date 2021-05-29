@@ -286,19 +286,13 @@ def update_func_name_with_class(func_ea, class_name):
 
 
 def update_func_this(func_ea, this_type=None):
-    functype = None
-    try:
-        func_details = utils.get_func_details(func_ea)
-        if func_details is None:
-            return None
-        if this_type:
-            if func_details:
-                func_details[0].name = "this"
-                func_details[0].type = this_type
-        functype = utils.update_func_details(func_ea, func_details)
-    except ida_hexrays.DecompilationFailure as ex:
-        log.exception("Couldn't decompile func at %08X: %s", func_ea, ex)
-    return functype
+    func_details = utils.get_func_details(func_ea)
+    if func_details is None:
+        return None
+    if this_type and func_details.cc == idaapi.CM_CC_THISCALL and func_details:
+        func_details[0].name = "this"
+        func_details[0].type = this_type
+    return utils.update_func_details(func_ea, func_details)
 
 
 def add_class_vtable(struct_ptr, vtable_name, offset=BADADDR, vtable_field_name=None):
@@ -336,6 +330,8 @@ def update_vtable_struct(
     pure_virtual_name=None,
     parent_name=None,
     add_func_this=True,
+    force_rename_vtable_head=False,  # rename vtable head even if it is already named by IDA
+    # if it's not named, then it will be renamed anyway
 ):
     # pylint: disable=too-many-arguments,too-many-locals,too-many-branches
     # TODO: refactor
@@ -393,16 +389,17 @@ def update_vtable_struct(
         vtable_head = functions_ea
     ida_bytes.del_items(vtable_head, ida_bytes.DELIT_SIMPLE, vtable_size)
     ida_bytes.create_struct(vtable_head, vtable_size, vtable_struct.id)
-    if parent_name is None and this_type:
-        parent = utils.deref_struct_from_tinfo(this_type)
-        parent_name = ida_struct.get_struc_name(parent.id)
-        if parent_name == class_name:
-            parent_name = None
-    idc.set_name(
-        vtable_head,
-        get_vtable_instance_name(class_name, parent_name),
-        ida_name.SN_CHECK | ida_name.SN_FORCE,
-    )
+    if not idc.hasUserName(idc.get_full_flags(vtable_head)) or force_rename_vtable_head:
+        if parent_name is None and this_type:
+            parent = utils.deref_struct_from_tinfo(this_type)
+            parent_name = ida_struct.get_struc_name(parent.id)
+            if parent_name == class_name:
+                parent_name = None
+        idc.set_name(
+            vtable_head,
+            get_vtable_instance_name(class_name, parent_name),
+            ida_name.SN_CHECK | ida_name.SN_FORCE,
+        )
 
 
 def is_valid_func_char(c):
