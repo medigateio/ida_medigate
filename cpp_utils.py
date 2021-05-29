@@ -278,7 +278,7 @@ def add_child_vtable(parent_name, child_name, child_vtable_id, offset):
 
 
 def update_func_name_with_class(func_ea, class_name):
-    name = ida_name.get_ea_name(func_ea)
+    name = idc.get_name(func_ea)
     if name.startswith("sub_"):
         new_name = class_name + VTABLE_DELIMITER + name
         return utils.set_func_name(func_ea, new_name), True
@@ -292,7 +292,8 @@ def update_func_this(func_ea, this_type=None):
     if this_type and func_details.cc == idaapi.CM_CC_THISCALL and func_details:
         func_details[0].name = "this"
         func_details[0].type = this_type
-    return utils.update_func_details(func_ea, func_details)
+        return utils.update_func_details(func_ea, func_details)
+    return None
 
 
 def add_class_vtable(struct_ptr, vtable_name, offset=BADADDR, vtable_field_name=None):
@@ -340,24 +341,26 @@ def update_vtable_struct(
         this_type = utils.get_typeinf_ptr(class_name)
     if not add_func_this:
         this_type = None
-    func, next_func = get_next_func_callback(
+    func_ea, next_func = get_next_func_callback(
         functions_ea,
         ignore_list=ignore_list,
         pure_virtual_name=pure_virtual_name,
     )
     dummy_i = 1
-    while func is not None:
-        new_func_name, is_name_changed = update_func_name_with_class(func, class_name)
+    while func_ea is not None:
+        new_func_name, is_name_changed = update_func_name_with_class(func_ea, class_name)
         func_ptr = None
         if ida_hexrays.init_hexrays_plugin():
             if is_name_changed:
-                func_type = update_func_this(func, this_type)
+                func_type = update_func_this(func_ea, this_type)
             else:
-                func_type = update_func_this(func, None)
+                func_type = update_func_this(func_ea, None)
+            if func_type is None:
+                func_type = utils.deserialize_typeinf(utils.get_or_guess_tinfo(func_ea))
             if func_type is not None:
                 func_ptr = utils.get_typeinf_ptr(func_type)
         else:
-            func_ptr = make_funcptr_pt(func, this_type)
+            func_ptr = make_funcptr_pt(func_ea, this_type)
         if add_dummy_member:
             utils.add_to_struct(vtable_struct, "dummy_%d" % dummy_i, func_ptr)
             dummy_i += 1
@@ -376,8 +379,8 @@ def update_vtable_struct(
                 str(func_ptr),
                 vtable_struct.id,
             )
-        ida_xref.add_dref(ptr_member.id, func, ida_xref.XREF_USER | ida_xref.dr_I)
-        func, next_func = get_next_func_callback(
+        ida_xref.add_dref(ptr_member.id, func_ea, ida_xref.XREF_USER | ida_xref.dr_I)
+        func_ea, next_func = get_next_func_callback(
             next_func,
             ignore_list=ignore_list,
             pure_virtual_name=pure_virtual_name,
@@ -510,10 +513,15 @@ def create_vtable_struct(sptr, name, vtable_offset, parent_name=None):
             name,
             vtable_offset,
         )
-    vtable_id = ida_struct.add_struc(BADADDR, vtable_name, False)
+        return None, this_type
+    vtable_id = ida_struct.get_struc_id(vtable_name)
+    if vtable_id == BADADDR:
+        vtable_id = ida_struct.add_struc(BADADDR, vtable_name, False)
     if vtable_id == BADADDR:
         log.exception("Couldn't create vtable struct %s", vtable_name)
+        return None, this_type
     vtable_struct = ida_struct.get_struc(vtable_id)
+    assert vtable_struct
     if parents_chain:
         for v_parent_name, offset in parents_chain:
             add_child_vtable(v_parent_name, name, vtable_id, offset)
@@ -540,6 +548,8 @@ def make_vtable(
         offset_in_class,
         parent_name=parent_name,
     )
+    if not vtable_struct:
+        return
     update_vtable_struct(
         vtable_ea,
         vtable_struct,

@@ -185,24 +185,19 @@ def create_funcptr(py_type):
 
 
 def get_func_details(func_ea):
+    """@return: tuple(func_type_data_t, tinfo_t)"""
     func_details = idaapi.func_type_data_t()
     try:
         xfunc = ida_hexrays.decompile(func_ea)
+        if not xfunc:
+            return None
         if not xfunc.type.get_func_details(func_details):
             log.warning("%08X Couldn't get func type details", func_ea)
             return None
         return func_details
     except ida_hexrays.DecompilationFailure as ex:
-        log.exception("Couldn't decompile func at %08X: %s", func_ea, ex)
-
-    tif = ida_typeinf.tinfo_t()
-    if not ida_nalt.get_tinfo(tif):
-        log.warn("%08X Couldn't get func tinfo", func_ea)
+        log.warn("Couldn't decompile func at %08X: %s", func_ea, ex)
         return None
-    if not tif.get_func_details(func_details):
-        log.warn("%08X Couldn't get func type details", func_ea)
-        return None
-    return func_details
 
 
 def get_func_type(funcea):
@@ -218,13 +213,10 @@ def get_func_type(funcea):
     funcea = get_func_start(funcea)
     try:
         xfunc = ida_hexrays.decompile(funcea)
-    except ida_hexrays.DecompilationFailure:
-        xfunc = None
-    if not xfunc:
-        log.warn("Failed to decompile %s", idc.get_name(funcea))
+        return xfunc.type.serialize()[:-1]
+    except ida_hexrays.DecompilationFailure as ex:
+        log.warn("Couldn't decompile func at %08X: %s", funcea, ex)
         return get_or_guess_tinfo(funcea)
-    assert xfunc.type, funcea
-    return xfunc.type.serialize()[:-1]
 
 
 def update_func_details(func_ea, func_details):
