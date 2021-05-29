@@ -336,7 +336,6 @@ def update_vtable_struct(
 ):
     # pylint: disable=too-many-arguments,too-many-locals,too-many-branches
     # TODO: refactor
-    is_first_member = True
     if this_type is None:
         this_type = utils.get_typeinf_ptr(class_name)
     if not add_func_this:
@@ -347,6 +346,7 @@ def update_vtable_struct(
         pure_virtual_name=pure_virtual_name,
     )
     dummy_i = 1
+    offset = 0
     while func_ea is not None:
         new_func_name, is_name_changed = update_func_name_with_class(func_ea, class_name)
         func_ptr = None
@@ -364,22 +364,25 @@ def update_vtable_struct(
         if add_dummy_member:
             utils.add_to_struct(vtable_struct, "dummy_%d" % dummy_i, func_ptr)
             dummy_i += 1
-        if is_first_member:
-            # We did an hack for vtables contained in union vtable with one dummy member
-            ptr_member = utils.add_to_struct(
-                vtable_struct, new_func_name, func_ptr, 0, overwrite=True
-            )
-            is_first_member = False
-        else:
-            ptr_member = utils.add_to_struct(vtable_struct, new_func_name, func_ptr, is_offset=True)
+            offset += utils.WORD_LEN
+        ptr_member = utils.add_to_struct(
+            vtable_struct, new_func_name, func_ptr, offset, overwrite=True, is_offset=True
+        )
         if ptr_member is None:
-            log.exception(
-                "Couldn't add %s(%s) to vtable struct 0x%X",
+            log.error(
+                "Couldn't add %s(%s) to vtable struct 0x%X at offset 0x%X",
                 new_func_name,
                 str(func_ptr),
                 vtable_struct.id,
+                offset,
             )
-        ida_xref.add_dref(ptr_member.id, func_ea, ida_xref.XREF_USER | ida_xref.dr_I)
+        offset += utils.WORD_LEN
+        if not ida_xref.add_dref(ptr_member.id, func_ea, ida_xref.XREF_USER | ida_xref.dr_I):
+            log.warn(
+                "Couldn't create xref between member %s and func %s",
+                ida_struct.get_member_name(ptr_member.id),
+                idc.get_name(func_ea),
+            )
         func_ea, next_func = get_next_func_callback(
             next_func,
             ignore_list=ignore_list,
@@ -390,7 +393,7 @@ def update_vtable_struct(
 
     if vtable_head is None:
         vtable_head = functions_ea
-    ida_bytes.del_items(vtable_head, ida_bytes.DELIT_SIMPLE, vtable_size)
+    # ida_bytes.del_items(vtable_head, ida_bytes.DELIT_SIMPLE, vtable_size)
     ida_bytes.create_struct(vtable_head, vtable_size, vtable_struct.id)
     if not idc.hasUserName(idc.get_full_flags(vtable_head)) or force_rename_vtable_head:
         if parent_name is None and this_type:
