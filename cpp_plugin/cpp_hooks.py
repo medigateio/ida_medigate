@@ -169,6 +169,10 @@ def apply_member_type(mid, py_type):
 def apply_func_type(funcea, py_type):
     """@param py_type: tuple(type, fields), if None, func type will be deleted"""
     assert funcea and utils.is_func_start(funcea)
+    if py_type is None and idc.get_tinfo(funcea) is None:
+        # in this case apply_type() would return False
+        # causing unnecessary warning message
+        return
     if not idc.apply_type(funcea, py_type, ida_typeinf.TINFO_DEFINITE):
         log.warn(
             "Failed to %s type for func %08X %s",
