@@ -139,10 +139,14 @@ def get_typeinf(typestr):
     return tif
 
 
-def deserialize_typeinf(xtype, fields):
+def deserialize_typeinf(py_type):
+    """@param py_type: tuple(type, fields) """
     # tif.deserialize(None, xtype, None) is fine
     # tif.deserialize(None, None, fields) returns None
     # tif.deserialize(None, None, None) crashes IDA (tested on IDA7.0 and IDA7.5 SP3)
+    if py_type is None:
+        return None
+    xtype, fields = py_type
     if xtype is None:
         return None
     tif = ida_typeinf.tinfo_t()
@@ -167,6 +171,19 @@ def get_typeinf_ptr(typeinf):
     return tif
 
 
+def create_funcptr(py_type):
+    tif = deserialize_typeinf(py_type)
+    if not tif:
+        return None
+    if tif.is_funcptr():
+        return py_type
+    if not tif.is_func():
+        raise RuntimeError("type is not a func: %s" % tif)
+    tif.create_ptr(tif)
+    assert tif.is_funcptr(), tif
+    return tif.serialize()[:-1]
+
+
 def get_func_details(func_ea):
     xfunc = ida_hexrays.decompile(func_ea)
     if xfunc is None:
@@ -176,6 +193,28 @@ def get_func_details(func_ea):
         log.warning("%08X Couldn't get func type details", func_ea)
         return None
     return func_details
+
+
+def get_func_type(funcea):
+    """
+    Try to get decompiled func type.
+    If can't decompile func, try to get tinfo from funcea,
+    And if funcaa doesn't have associated tinfo, try to guess type at funcea
+    @return: tuple(type, fnames)
+    """
+    if not is_func(funcea):
+        log.warn("%08X is not a func", funcea)
+        return None
+    funcea = get_func_start(funcea)
+    try:
+        xfunc = ida_hexrays.decompile(funcea)
+    except ida_hexrays.DecompilationFailure:
+        xfunc = None
+    if not xfunc:
+        log.warn("Failed to decompile %s", idc.get_name(funcea))
+        return get_or_guess_tinfo(funcea)
+    assert xfunc.type, funcea
+    return xfunc.type.serialize()[:-1]
 
 
 def update_func_details(func_ea, func_details):
@@ -274,6 +313,30 @@ def deref_tinfo(tif):
     if not tif.is_ptr():
         return tif
     return tif.get_pointed_object()
+
+
+def guess_tinfo(ea):
+    """@return: tuple(type, fields) just like idc.get_tinfo()"""
+    tif = ida_typeinf.tinfo_t()
+    if ida_typeinf.guess_tinfo(tif, ea):
+        return tif.serialize()[:-1]
+    return None
+
+
+def get_or_guess_tinfo(ea):
+    """@return: tuple(type, fields) just like idc.get_tinfo()"""
+    py_type = idc.get_tinfo(ea)
+    if py_type:
+        return py_type
+    return guess_tinfo(ea)
+
+
+def remove_pointer(py_type):
+    """If given type is not a pointer, return given type."""
+    tif = deserialize_typeinf(py_type)
+    if not tif:
+        return None
+    return ida_typeinf.remove_pointer(tif).serialize()[:-1]
 
 
 def is_struct_or_union(tinfo):
