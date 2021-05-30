@@ -58,7 +58,7 @@ def is_valid_vtable_name(member_name):
 
 def is_valid_vtable_type(member, member_type):
     if member_type.is_ptr():
-        struct = utils.deref_struct_from_tinfo(member_type)
+        struct = utils.get_struc_from_tinfo(member_type)
         return is_struct_vtable(struct)
     return False
 
@@ -167,7 +167,7 @@ def install_vtables_union(class_name, class_vtable_member=None, vtable_member_ti
         str(vtable_member_tinfo),
     )
     if class_vtable_member and vtable_member_tinfo:
-        old_vtable_sptr = utils.extract_struct_from_tinfo(vtable_member_tinfo)
+        old_vtable_sptr = utils.get_struc_from_tinfo(vtable_member_tinfo)
         old_vtable_class_name = ida_struct.get_struc_name(old_vtable_sptr.id)
     else:
         old_vtable_class_name = get_class_vtable_struct_name(class_name, offset)
@@ -247,7 +247,7 @@ def add_child_vtable(parent_name, child_name, child_vtable_id, offset):
     parent_vtable_struct = utils.get_sptr_by_name(get_class_vtable_struct_name(parent_name, offset))
     if parent_vtable_struct is None:
         return
-    pointed_struct = utils.extract_struct_from_tinfo(vtable_member_tinfo)
+    pointed_struct = utils.get_struc_from_tinfo(vtable_member_tinfo)
     log.debug("pointed_struct: %s", str(pointed_struct))
     if (
         (pointed_struct is None)
@@ -366,7 +366,7 @@ def update_vtable_struct(
             dummy_i += 1
             offset += utils.WORD_LEN
         ptr_member = utils.add_to_struct(
-            vtable_struct, new_func_name, func_ptr, offset, overwrite=True, is_offset=True
+            vtable_struct, new_func_name, func_ptr, offset, overwrite=True, is_offs=True
         )
         if ptr_member is None:
             log.error(
@@ -397,7 +397,7 @@ def update_vtable_struct(
     ida_bytes.create_struct(vtable_head, vtable_size, vtable_struct.id)
     if not idc.hasUserName(idc.get_full_flags(vtable_head)) or force_rename_vtable_head:
         if parent_name is None and this_type:
-            parent = utils.deref_struct_from_tinfo(this_type)
+            parent = utils.get_struc_from_tinfo(this_type)
             parent_name = ida_struct.get_struc_name(parent.id)
             if parent_name == class_name:
                 parent_name = None
@@ -573,7 +573,7 @@ def add_baseclass(class_name, baseclass_name, baseclass_offset=0, to_refresh=Fal
     member = utils.add_to_struct(
         struct_ptr,
         member_name,
-        new_member_tif=utils.get_typeinf(baseclass_name),
+        member_tif=utils.get_typeinf(baseclass_name),
         offset=baseclass_offset,
         overwrite=True,
     )
