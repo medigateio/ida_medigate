@@ -573,7 +573,7 @@ def add_baseclass(class_name, baseclass_name, baseclass_offset=0, to_refresh=Fal
     member = utils.add_to_struct(
         struct_ptr,
         member_name,
-        member_type=utils.get_typeinf(baseclass_name),
+        new_member_tif=utils.get_typeinf(baseclass_name),
         offset=baseclass_offset,
         overwrite=True,
     )

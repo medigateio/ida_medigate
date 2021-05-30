@@ -233,19 +233,22 @@ def update_func_details(func_ea, func_details):
 def add_to_struct(
     struct,
     member_name,
-    member_type=None,
+    new_member_tif=None,
     offset=BADADDR,
     is_offset=False,
     overwrite=False,
 ):
-    # pylint: disable=too-many-branches
+    """@return: member_ptr, or None if failed"""
+    # pylint: disable=too-many-branches,too-many-return-statements
+    # pylint: disable=too-many-statements,too-many-locals
     # TODO: refactor
     mt = None
-    flag = idaapi.FF_DWORD
+    flag = idaapi.FF_QWORD if WORD_LEN == 8 else idaapi.FF_DWORD
     member_size = WORD_LEN
-    if member_type is not None and (member_type.is_struct() or member_type.is_union()):
+
+    if new_member_tif is not None and (new_member_tif.is_struct() or new_member_tif.is_union()):
         log.debug("Is struct!")
-        substruct = extract_struct_from_tinfo(member_type)
+        substruct = extract_struct_from_tinfo(new_member_tif)
         if substruct is not None:
             flag = idaapi.FF_STRUCT
             mt = ida_nalt.opinfo_t()
@@ -256,10 +259,7 @@ def add_to_struct(
                 substruct.id,
             )
             member_size = ida_struct.get_struc_size(substruct.id)
-    elif WORD_LEN == 4:
-        flag = idaapi.FF_DWORD
-    elif WORD_LEN == 8:
-        flag = idaapi.FF_QWORD
+
     if is_offset:
         flag |= idaapi.FF_0OFF
         mt = ida_nalt.opinfo_t()
@@ -267,39 +267,85 @@ def add_to_struct(
         r.init(ida_nalt.get_reftype_by_size(WORD_LEN) | ida_nalt.REFINFO_NOBASE)
         mt.ri = r
 
-    new_member_name = member_name
     member_ptr = ida_struct.get_member(struct, offset)
-    if overwrite and member_ptr:
-        if ida_struct.get_member_name(member_ptr.id) != member_name:
-            log.debug("Overwriting!")
+    if member_ptr:
+        old_member_name = ida_struct.get_member_name(member_ptr.id)
+        if old_member_name != member_name:
+            if not overwrite:
+                log.warn(
+                    "Couldn't change member name to '%s' for %08X %s",
+                    member_name,
+                    member_ptr.id,
+                    old_member_name,
+                )
+                return None
+            log.debug("Overwriting member '%s' with '%s'!", old_member_name, member_name)
             ret_val = ida_struct.set_member_name(struct, offset, member_name)
             i = 0
+            member_base_name = member_name
             while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
-                new_member_name = "%s_%d" % (member_name, i)
+                member_name = "%s_%d" % (member_base_name, i)
                 i += 1
                 if i > MAX_SET_MEMBER_NAME_ATTEMPTS:
-                    log.debug("failed change name")
+                    log.warn(
+                        "Failed to change member name at offset 0x%X from '%s' to '%s'",
+                        offset,
+                        old_member_name,
+                        member_name,
+                    )
                     return None
-                ret_val = ida_struct.set_member_name(struct, offset, new_member_name)
+                ret_val = ida_struct.set_member_name(struct, offset, member_name)
+            if ret_val != ida_struct.STRUC_ERROR_MEMBER_OK:
+                log.warn("add_struc_member('%s'): %d", member_name, ret_val)
 
     else:
-        ret_val = ida_struct.add_struc_member(
-            struct, new_member_name, offset, flag, mt, member_size
-        )
+        ret_val = ida_struct.add_struc_member(struct, member_name, offset, flag, mt, member_size)
         i = 0
+        member_base_name = member_name
         while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
-            new_member_name = "%s_%d" % (member_name, i)
+            member_name = "%s_%d" % (member_base_name, i)
             i += 1
             if i > MAX_SET_MEMBER_NAME_ATTEMPTS:
                 return None
             ret_val = ida_struct.add_struc_member(
-                struct, new_member_name, offset, flag, mt, member_size
+                struct, member_name, offset, flag, mt, member_size
             )
-        if ret_val != 0:
-            log.debug("ret_val: %d", ret_val)
-        member_ptr = ida_struct.get_member_by_name(struct, new_member_name)
-    if member_type is not None and member_ptr is not None:
-        ida_struct.set_member_tinfo(struct, member_ptr, 0, member_type, idaapi.TINFO_DEFINITE)
+        if ret_val != ida_struct.STRUC_ERROR_MEMBER_OK:
+            log.warn("add_struc_member('%s'): %d", member_name, ret_val)
+        member_ptr = ida_struct.get_member_by_name(struct, member_name)
+        if not member_ptr:
+            log.error(
+                "Couldn't add member %s to struct %08X %s",
+                member_base_name,
+                struct.id,
+                ida_struct.get_struc_name(struct.id),
+            )
+            return None
+    if new_member_tif is not None:
+        old_member_tif = get_member_tinfo(member_ptr)
+        if old_member_tif is not None:
+            if new_member_tif.equals_to(old_member_tif):
+                return member_ptr
+            elif not overwrite:
+                log.warn(
+                    "Couldn't change type for member %08X %s from '%s' to '%s'",
+                    member_ptr.id,
+                    member_name,
+                    old_member_tif,
+                    new_member_tif,
+                )
+                return None
+        smt_code = ida_struct.set_member_tinfo(
+            struct, member_ptr, 0, new_member_tif, idaapi.TINFO_GUESSED
+        )
+        if smt_code != ida_struct.SMT_OK:
+            log.warn(
+                "Couldn't set type '%s' for member %08X %s: %s",
+                new_member_tif,
+                member_ptr.id,
+                member_name,
+                print_smt_code(smt_code),
+            )
     return member_ptr
 
 
@@ -374,11 +420,10 @@ def extract_struct_from_tinfo(tinfo):
 def get_member_tinfo(mptr):
     if not mptr:
         return None
-    member_typeinf = idaapi.tinfo_t()
-    if not ida_struct.get_member_tinfo(member_typeinf, mptr):
-        log.warn("Couldn't get member type info")
+    member_tif = idaapi.tinfo_t()
+    if not ida_struct.get_member_tinfo(member_tif, mptr):
         return None
-    return member_typeinf
+    return member_tif
 
 
 def get_mptr_by_member_id(mid):
