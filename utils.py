@@ -26,6 +26,10 @@ log = logging.getLogger("ida_medigate")
 MIN_MEMBER_INDEX = 1
 MAX_MEMBER_INDEX = 250
 
+# better to use something other than "_"
+# to be able to distinguish function indexes from member indexes
+MEMBER_INDEX_SPLITTER = "$_"
+
 
 def get_word_len():
     info = idaapi.get_inf_structure()
@@ -135,12 +139,16 @@ def get_typeinf(typestr):
         # Passing None to tinfo_t.get_named_type() can crash IDA
         return None
     tif = idaapi.tinfo_t()
-    if not tif.get_named_type(idaapi.get_idati(), typestr):
+    if tif.get_named_type(idaapi.get_idati(), typestr):
+        return tif
+    PT_SILENT = 1  # in IDA7.0 idc.PT_SILENT=2, which is incorrect
+    py_type = idc.parse_decl(typestr, PT_SILENT)
+    if not py_type:
         return None
-    return tif
+    return deserialize_tinfo(py_type[1:])
 
 
-def deserialize_typeinf(py_type):
+def deserialize_tinfo(py_type):
     """@param py_type: tuple(type, fields) """
     # tif.deserialize(None, xtype, None) is fine
     # tif.deserialize(None, None, fields) returns None
@@ -173,7 +181,7 @@ def get_typeinf_ptr(typeinf):
 
 
 def create_funcptr(py_type):
-    tif = deserialize_typeinf(py_type)
+    tif = deserialize_tinfo(py_type)
     if not tif:
         return None
     if tif.is_funcptr():
@@ -183,22 +191,6 @@ def create_funcptr(py_type):
     tif.create_ptr(tif)
     assert tif.is_funcptr(), tif
     return tif.serialize()[:-1]
-
-
-def get_func_details(func_ea):
-    """@return: tuple(func_type_data_t, tinfo_t)"""
-    func_details = idaapi.func_type_data_t()
-    try:
-        xfunc = ida_hexrays.decompile(func_ea)
-        if not xfunc:
-            return None
-        if not xfunc.type.get_func_details(func_details):
-            log.warning("%08X Couldn't get func type details", func_ea)
-            return None
-        return func_details
-    except ida_hexrays.DecompilationFailure as ex:
-        log.warn("Couldn't decompile func at %08X: %s", func_ea, ex)
-        return None
 
 
 def get_func_type(funcea):
@@ -216,19 +208,38 @@ def get_func_type(funcea):
         xfunc = ida_hexrays.decompile(funcea)
         return xfunc.type.serialize()[:-1]
     except ida_hexrays.DecompilationFailure as ex:
-        log.warn("Couldn't decompile func at %08X: %s", funcea, ex)
+        log.warn(
+            "Couldn't decompile func at %08X: %s, getting or guessing func type from ea", funcea, ex
+        )
         return get_or_guess_tinfo(funcea)
 
 
-def update_func_details(func_ea, func_details):
-    function_tinfo = idaapi.tinfo_t()
-    if not function_tinfo.create_func(func_details):
+def get_func_tinfo(funcea):
+    return deserialize_tinfo(get_func_type(funcea))
+
+
+def get_func_details(funcea):
+    """@return: func_type_data_t"""
+    func_tif = deserialize_tinfo(get_func_type(funcea))
+    if func_tif is None:
+        log.warning("%08X Couldn't get func type", funcea)
+        return None
+    func_details = idaapi.func_type_data_t()
+    if not func_tif.get_func_details(func_details):
+        log.warning("%08X Couldn't get func type details", funcea)
+        return None
+    return func_details
+
+
+def apply_func_details(func_ea, func_details, flags=idaapi.TINFO_DEFINITE):
+    func_tif = idaapi.tinfo_t()
+    if not func_tif.create_func(func_details):
         log.warning("%08X Couldn't create func from details", func_ea)
-        return None
-    if not ida_typeinf.apply_tinfo(func_ea, function_tinfo, idaapi.TINFO_GUESSED):
-        log.warning("%08X Couldn't apply func tinfo", func_ea)
-        return None
-    return function_tinfo
+        return False
+    if not ida_typeinf.apply_tinfo(func_ea, func_tif, flags):
+        log.warning("%08X Couldn't apply new func details", func_ea)
+        return False
+    return True
 
 
 def get_member_params(member_tif, is_offs):
@@ -265,7 +276,9 @@ def set_member_name_retry(member_ptr, new_name):
         return True
     index = MIN_MEMBER_INDEX
     while index <= MAX_MEMBER_INDEX:
-        if ida_struct.set_member_name(struct_ptr, offset, new_name + "_%d" % index):
+        if ida_struct.set_member_name(
+            struct_ptr, offset, "%s%s%d" % (new_name, MEMBER_INDEX_SPLITTER, index)
+        ):
             return True
     return False
 
@@ -283,7 +296,7 @@ def add_struc_member_retry(struct_ptr, member_name, offset, flag, mt, member_siz
     i = 0
     member_base_name = member_name
     while error_code == ida_struct.STRUC_ERROR_MEMBER_NAME:
-        member_name = "%s_%d" % (member_base_name, i)
+        member_name = "%s%s%d" % (member_base_name, MEMBER_INDEX_SPLITTER, i)
         i += 1
         if i > MAX_MEMBER_INDEX:
             return None
@@ -300,7 +313,7 @@ def add_struc_member_retry(struct_ptr, member_name, offset, flag, mt, member_siz
     return error_code, member_ptr
 
 
-def set_member_tinfo(struct_ptr, member_ptr, new_tif, flags=idaapi.TINFO_GUESSED):
+def set_member_tinfo(struct_ptr, member_ptr, new_tif, flags=idaapi.TINFO_DEFINITE):
     """@param new_tif: if None, member type will be deleted"""
     assert struct_ptr and member_ptr
 
@@ -318,11 +331,21 @@ def set_member_tinfo(struct_ptr, member_ptr, new_tif, flags=idaapi.TINFO_GUESSED
     return ida_struct.set_member_tinfo(struct_ptr, member_ptr, 0, new_tif, flags)
 
 
+def _remove_member_index(name):
+    if not name:
+        return name
+    if MEMBER_INDEX_SPLITTER in name:
+        # remove only the last occurance of index splitter
+        return MEMBER_INDEX_SPLITTER.join(name.split(MEMBER_INDEX_SPLITTER)[:-1])
+    return name
+
+
 def _update_member_name(member_ptr, new_member_name, overwrite):
     assert member_ptr
     assert new_member_name
 
-    if ida_struct.get_member_name(member_ptr.id) == new_member_name:
+    old_member_name = _remove_member_index(ida_struct.get_member_name(member_ptr.id))
+    if old_member_name == new_member_name:
         return True
 
     if not overwrite:
@@ -387,7 +410,7 @@ def add_to_struct(
 
     if member_ptr:
         # pylint: disable=too-many-function-args
-        if not _update_member_name(struct_ptr, offset, member_name, overwrite):
+        if not _update_member_name(member_ptr, member_name, overwrite):
             return None
     else:
         member_ptr = _add_new_member(struct_ptr, offset, member_name, member_tif, is_offs)
@@ -431,7 +454,7 @@ def get_or_guess_tinfo(ea):
 
 def remove_pointer(py_type):
     """If given type is not a pointer, return given type."""
-    tif = deserialize_typeinf(py_type)
+    tif = deserialize_tinfo(py_type)
     if not tif:
         return None
     return ida_typeinf.remove_pointer(tif).serialize()[:-1]
@@ -444,14 +467,26 @@ def is_struct_or_union(tinfo):
 def get_struc_from_tinfo(struct_tif):
     if not struct_tif:
         return None
-    if struct_tif.is_ptr():
-        struct_tif = deref_tinfo(struct_tif)
     if not is_struct_or_union(struct_tif):
         return None
     struct_id = ida_struct.get_struc_id(struct_tif.get_type_name())
     if struct_id == BADADDR:
         return None
     struct = ida_struct.get_struc(struct_id)
+    return struct
+
+
+def deref_struct_from_tinfo(tinfo):
+    struct_tinfo = deref_tinfo(tinfo)
+    if struct_tinfo is None:
+        return None
+    return get_struc_from_tinfo(struct_tinfo)
+
+
+def extract_struct_from_tinfo(tinfo):
+    struct = get_struc_from_tinfo(tinfo)
+    if struct is None:
+        struct = deref_struct_from_tinfo(tinfo)
     return struct
 
 

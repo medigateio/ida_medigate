@@ -1,4 +1,5 @@
 import logging
+import re
 from functools import partial
 
 import ida_bytes
@@ -58,7 +59,7 @@ def is_valid_vtable_name(member_name):
 
 def is_valid_vtable_type(member, member_type):
     if member_type.is_ptr():
-        struct = utils.get_struc_from_tinfo(member_type)
+        struct = utils.deref_struct_from_tinfo(member_type)
         return is_struct_vtable(struct)
     return False
 
@@ -167,7 +168,7 @@ def install_vtables_union(class_name, class_vtable_member=None, vtable_member_ti
         str(vtable_member_tinfo),
     )
     if class_vtable_member and vtable_member_tinfo:
-        old_vtable_sptr = utils.get_struc_from_tinfo(vtable_member_tinfo)
+        old_vtable_sptr = utils.extract_struct_from_tinfo(vtable_member_tinfo)
         old_vtable_class_name = ida_struct.get_struc_name(old_vtable_sptr.id)
     else:
         old_vtable_class_name = get_class_vtable_struct_name(class_name, offset)
@@ -247,7 +248,7 @@ def add_child_vtable(parent_name, child_name, child_vtable_id, offset):
     parent_vtable_struct = utils.get_sptr_by_name(get_class_vtable_struct_name(parent_name, offset))
     if parent_vtable_struct is None:
         return
-    pointed_struct = utils.get_struc_from_tinfo(vtable_member_tinfo)
+    pointed_struct = utils.extract_struct_from_tinfo(vtable_member_tinfo)
     log.debug("pointed_struct: %s", str(pointed_struct))
     if (
         (pointed_struct is None)
@@ -285,15 +286,19 @@ def update_func_name_with_class(func_ea, class_name):
     return name, False
 
 
-def update_func_this(func_ea, this_type=None):
+def update_func_this(func_ea, this_type=None, flags=idc.TINFO_DEFINITE):
+    if idc.get_tinfo(func_ea) is not None:
+        # don't touch any user defined type
+        return False
     func_details = utils.get_func_details(func_ea)
-    if func_details is None:
-        return None
-    if this_type and func_details.cc == idaapi.CM_CC_THISCALL and func_details:
-        func_details[0].name = "this"
+    if not func_details:
+        return False
+    if func_details.cc & idaapi.CM_CC_THISCALL != idaapi.CM_CC_THISCALL:
+        return False
+    func_details[0].name = "this"
+    if this_type:
         func_details[0].type = this_type
-        return utils.update_func_details(func_ea, func_details)
-    return None
+    return utils.apply_func_details(func_ea, func_details, flags)
 
 
 def add_class_vtable(struct_ptr, vtable_name, offset=BADADDR, vtable_field_name=None):
@@ -317,6 +322,29 @@ def add_class_vtable(struct_ptr, vtable_name, offset=BADADDR, vtable_field_name=
 
 def make_funcptr_pt(func, this_type):
     return utils.get_typeinf("void (*)(%s *)" % str(this_type))
+
+
+def fix_userpurge(funcea, flags=idc.TINFO_DEFINITE):
+    """@return: True if __userpurge calling conv was found and fixed at funcea, otherwise False"""
+    funcea = utils.get_func_start(funcea)
+    if funcea == BADADDR:
+        return False
+    tif = utils.get_func_tinfo(funcea)
+    if not tif:
+        return False
+    typestr = str(tif)
+    if not typestr:
+        return False
+    if "__userpurge" not in typestr:
+        return False
+    typestr = typestr.replace("__userpurge", "(__thiscall)")
+    typestr = re.sub(r"\@\<\w+\>", "", typestr)
+    PT_SILENT = 1  # in IDA7.0 idc.PT_SILENT=2, which is incorrect
+    py_type = idc.parse_decl(typestr, PT_SILENT)
+    if not py_type:
+        log.warn("%08X Failed to fix userpurge", funcea)
+        return False
+    return idc.apply_type(funcea, py_type[1:], flags)
 
 
 def update_vtable_struct(
@@ -348,19 +376,14 @@ def update_vtable_struct(
     dummy_i = 1
     offset = 0
     while func_ea is not None:
-        new_func_name, is_name_changed = update_func_name_with_class(func_ea, class_name)
+        new_func_name, _ = update_func_name_with_class(func_ea, class_name)
         func_ptr = None
         if ida_hexrays.init_hexrays_plugin():
-            if is_name_changed:
-                func_type = update_func_this(func_ea, this_type)
-            else:
-                func_type = update_func_this(func_ea, None)
-            if func_type is None:
-                func_type = utils.deserialize_typeinf(utils.get_or_guess_tinfo(func_ea))
-            if func_type is not None:
-                func_ptr = utils.get_typeinf_ptr(func_type)
+            fix_userpurge(func_ea, idc.TINFO_DEFINITE)
+            update_func_this(func_ea, this_type, idc.TINFO_DEFINITE)
+            func_ptr = utils.get_typeinf_ptr(utils.get_func_tinfo(func_ea))
         else:
-            func_ptr = make_funcptr_pt(func_ea, this_type)
+            func_ptr = make_funcptr_pt(func_ea, this_type)  # TODO: maybe try to get or guess type?
         if add_dummy_member:
             utils.add_to_struct(vtable_struct, "dummy_%d" % dummy_i, func_ptr)
             dummy_i += 1
@@ -397,7 +420,7 @@ def update_vtable_struct(
     ida_bytes.create_struct(vtable_head, vtable_size, vtable_struct.id)
     if not idc.hasUserName(idc.get_full_flags(vtable_head)) or force_rename_vtable_head:
         if parent_name is None and this_type:
-            parent = utils.get_struc_from_tinfo(this_type)
+            parent = utils.deref_struct_from_tinfo(this_type)
             parent_name = ida_struct.get_struc_name(parent.id)
             if parent_name == class_name:
                 parent_name = None
