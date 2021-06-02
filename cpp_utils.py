@@ -36,7 +36,7 @@ def get_vtable_instance_name(class_name, parent_name=None):
 
 
 def get_base_member_name(parent_name, offset):
-    return "baseclass_%X" % offset
+    return "%s_%X" % (parent_name, offset)
 
 
 def get_vtable_line(ea, stop_ea=None, ignore_list=None, pure_virtual_name=None):
