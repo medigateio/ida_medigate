@@ -16,15 +16,15 @@ from . import utils
 log = logging.getLogger("ida_medigate")
 
 
-VTABLE_KEYWORD = "vtbl"
-VTABLE_UNION_KEYWORD = "VTABLES"
-# VTABLES_UNION_VTABLE_FIELD_POSTFIX = "_vtable"
+VTABLE_KEYWORD = "vftable"
+VTABLE_UNION_KEYWORD = "VFTABLES"
+# VTABLES_UNION_VTABLE_FIELD_POSTFIX = "_vftable"
 VTABLES_UNION_VTABLE_FIELD_POSTFIX = ""
-VTABLE_DELIMITER = "__"
-VTABLE_POSTFIX = "_vtbl"
-VTABLE_FIELD_NAME = "__vftable"  # Name For vtable * field
+VTABLE_DELIMITER = "::"
+VTABLE_POSTFIX = "_vftable"
+VTABLE_FIELD_NAME = "vfptr"  # Name For vftable * field
 VTABLE_INSTANCE_DELIMITER = VTABLE_DELIMITER
-VTABLE_INSTANCE_KEYWORD = "vtable"
+VTABLE_INSTANCE_KEYWORD = "vftable"
 VTABLE_INSTANCE_POSTFIX = VTABLE_INSTANCE_DELIMITER + VTABLE_INSTANCE_KEYWORD
 
 
@@ -138,8 +138,8 @@ def find_vtable_at_offset(struct_ptr, vtable_offset):
 
 def get_class_vtable_struct_name(class_name, vtable_offset_in_class):
     if vtable_offset_in_class == 0:
-        return class_name + "_vtbl"
-    return "%s_%04X_vtbl" % (class_name, vtable_offset_in_class)
+        return class_name + VTABLE_POSTFIX
+    return "%s_%04X%s" % (class_name, vtable_offset_in_class, VTABLE_POSTFIX)
 
 
 def get_class_vtable_field_name(class_name):

@@ -122,7 +122,6 @@ def get_linked_func(mid):
 def rename_member(mid, new_name):
     assert mid and ida_struct.is_member_id(mid)
     assert new_name
-    # TODO: should we replace "::" with "__" in new_name?
     assert new_name, mid
     old_name = ida_struct.get_member_name(mid)
     assert old_name, mid
@@ -142,7 +141,6 @@ def rename_member(mid, new_name):
 def rename_func(funcea, new_name):
     assert funcea and utils.is_func_start(funcea)
     assert new_name
-    # TODO: should we replace "__" with "::" in new_name?
     old_name = idc.get_name(funcea)
     if old_name == new_name:
         return
@@ -216,7 +214,6 @@ class CPPHooks(ida_idp.IDB_Hooks):
         return 0
 
     def _func_renamed(self, funcea, new_name):
-        # TODO: Do we need to replace "::" with "__" in new_name?
         assert utils.is_func_start(funcea)
         assert new_name, funcea
 
