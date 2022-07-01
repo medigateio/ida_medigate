@@ -33,12 +33,18 @@ What makes the plugin unique is the fact it uses the same environment the resear
   * This version we partially support disassembly with no decompiler
 * Linux - There is no anything that really depends on Linux, but the plugin was tested on IDA Linux version.
 * [ida-referee](https://github.com/joeleong/ida-referee): We use this useful plugin to save xrefs for struct's members uses in the decompiler. The original plugin doesn't support Python3 so we port it (under the directory `plugins/`)
+* The itanium_demangler pure-python package.
 
 # Installation:
 
 Copy `medigate_cpp_plugin` to the `plugins` directory and add the source code path to your `idapythonrc.py` file
 
 Copy `plugins/ida-referee/referee.py`to the same directory.
+
+Install the package itanium_demangler.
+```shell
+pip install -r requirements.txt
+```
 
 # Features:
 

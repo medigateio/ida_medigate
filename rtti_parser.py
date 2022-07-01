@@ -9,6 +9,7 @@ from idaapi import BADADDR
 
 from . import cpp_utils
 from . import utils
+from itanium_demangler import parse as demangle
 
 
 class RTTIParser(object):
@@ -269,6 +270,11 @@ class GccRTTIParser(RTTIParser):
         else:
             mangled_class_name = "_Z" + idc.get_strlit_contents(name_ea).decode()
         class_name = ida_name.demangle_name(mangled_class_name, idc.INF_LONG_DN)
+        
+        # Make sure the class name demangled correctly.
+        # IDA sometimes failed to demangle name.
+        if not class_name:
+            class_name = demangle(mangled_class_name).__str__()
         return cls.strip_class_name(class_name)
 
     @classmethod
