@@ -65,20 +65,6 @@ Add Base Class
 }
         )
 
-class rtti_classes_hierarchy_rebuilding_form(ida_kernwin.Form):
-    def __init__(self):
-        F = ida_kernwin.Form
-        F.__init__(
-            self,
-            r"""Medigate plugin
-RTTI Classes Hierarchy Rebuilding
-<## BuildALL\::{BuildALL}>
-""",
-{
-    'BuildALL' : F.NumericInput(swidth=20, tp=F.FT_UINT64)
-}
-        )
-
 
 class medigate_cpp_gui_plugin_t(idaapi.plugin_t, idaapi.UI_Hooks):
 
@@ -224,19 +210,11 @@ class medigate_cpp_gui_plugin_t(idaapi.plugin_t, idaapi.UI_Hooks):
             cpp_utils.add_baseclass(class_name=class_name, baseclass_name=baseclass_name, baseclass_offset=baseclass_offset, to_refresh=to_refresh)
 
     def rebuilding_all_class(self, BuildALL=1):
-        f =  rtti_classes_hierarchy_rebuilding_form()    
-        f.Compile()
 
-        f.BuildALL.value = BuildALL
+        from ida_medigate.rtti_parser import GccRTTIParser
+        GccRTTIParser.init_parser()
+        GccRTTIParser.build_all()
 
-        ok = f.Execute()
-        if ok == 1:
-            if f.BuildALL.value == 1:
-                from ida_medigate.rtti_parser import GccRTTIParser
-                GccRTTIParser.init_parser()
-                GccRTTIParser.build_all()
-            else:
-                pass
 
 def PLUGIN_ENTRY():
     return medigate_cpp_gui_plugin_t()
