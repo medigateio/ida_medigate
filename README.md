@@ -108,6 +108,12 @@ Now refresh struct C (see Remarks section), cast `v0` to be `C *`, decompile aga
 
 ![](images/main_after.png)
 
+or 
+
+![](images/f_rebuild_all_gui.jpg)
+
+
+
 ## Manual Classes Hierarchy Rebuilding
 
 For cases that there are no RTTI, our infrastructure still enables to manually define c++ class. For the same example (examples/a32_stripped) you can create manually struct B, then select it's virtual table and type
