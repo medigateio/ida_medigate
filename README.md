@@ -1,12 +1,8 @@
-ida_medigate C++ plugin for IDA Pro
+# ida_medigate C++ plugin for IDA Pro
 
-# 
+## Motivation And Background
 
-[TOC]
-
-# Motivation And Background
-
-Reverse engineering of compiled C++  code is not fun. Static Reverse engineering of compiled C++ code is **frustrating.** The main reason which makes it so hard is virtual functions. In contrast to compiled C code, there is no clear code flow. Too many times one can spend much time trying to understand what is the next virtual function is called, rather than just see the function like in compiled C code.
+Reverse engineering of compiled C++ code is not fun. Static Reverse engineering of compiled C++ code is **frustrating.** The main reason which makes it so hard is virtual functions. In contrast to compiled C code, there is no clear code flow. Too many times one can spend much time trying to understand what is the next virtual function is called, rather than just see the function like in compiled C code.
 
 When one investigates a virtual function, the amount of time he or she needs to effort in order to find its xref, is not sense.
 
@@ -14,7 +10,7 @@ After too many C++ RE projects, I gave up and decided I need a flexible (Python)
 
 This plugin isn't intended to work always "out of the box", but to be another tool for the reverser.
 
-# **About**
+## About
 
 The plugin consists of two parts:
 
@@ -23,24 +19,22 @@ The plugin consists of two parts:
 
 This first part is not dependent on the second part, so it possible to use the plugin to reverse engineering a binary that doesn't contain RTTI, by defining those classes manually based on the plugin's API.
 
-What makes the plugin unique is the fact it uses the same environment the researcher is already familiar with, and doesn't add any new menu or object, and based on the known IDA building blocks (structure, union, type for structure's members, etc) - **This enable the plugin to support C++ abstracting for every architecture IDA supports**.
+What makes the plugin unique is the fact it uses the same environment the researcher is already familiar with, and doesn't add any new menu or object, and based on the known IDA building blocks (structure, union, type for structure's members, etc) - **This enables the plugin to support C++ abstracting for every architecture IDA supports**.
 
 **Note:** The RTTI parser parses x86/x64 g++ RTTI, but its structure enables to add support for more architectures and compilers **easily.**
 
-# Requirements
+## Requirements
 
-* IDA 7.5 SP  + Hex-Rays Decompiler + Python 3
-  * This version we partially support disassembly with no decompiler
-* Linux - There is no anything that really depends on Linux, but the plugin was tested on IDA Linux version.
-* [ida-referee](https://github.com/joeleong/ida-referee): We use this useful plugin to save xrefs for struct's members uses in the decompiler. The original plugin doesn't support Python3 so we port it (under the directory `plugins/`)
+* IDA 7.5 SP  + Hex-Rays Decompiler + Python 3.
+  * This version we partially support disassembly with no decompiler.
+* [ida-referee](https://github.com/joeleong/ida-referee) port.
 
-# Installation:
+## Installation
 
-Copy `medigate_cpp_plugin` to the `plugins` directory and add the source code path to your `idapythonrc.py` file
+1. Install [ida-referee](https://github.com/joeleong/ida-referee).
+2. Copy the `plugins` directory into your IDA installation folder.
 
-Copy `plugins/ida-referee/referee.py`to the same directory.
-
-# Features:
+## Features
 
 Assuming the binary original source code is the following (`examples/a.cpp`):
 
@@ -90,7 +84,7 @@ int main()
 
 The binary is stripped but contains RTTI.
 
-## RTTI Classes Hierarchy Rebuilding
+### RTTI Classes Hierarchy Rebuilding
 
 When we just load the binary, the `main` function (`sub_84D` in the 32 bit version) looks like:
 
@@ -108,7 +102,7 @@ Now refresh struct C (see Remarks section), cast `v0` to be `C *`, decompile aga
 
 ![](images/main_after.png)
 
-## Manual Classes Hierarchy Rebuilding
+### Manual Classes Hierarchy Rebuilding
 
 For cases that there are no RTTI, our infrastructure still enables to manually define c++ class. For the same example (examples/a32_stripped) you can create manually struct B, then select it's virtual table and type
 
@@ -146,7 +140,7 @@ The final result is the same like in the RTTI case:
 
 ![](images/main_after.png)
 
-## Synchronization between functions and vtable members
+### Synchronization between functions and vtable members
 
 When new a vtable struct is created (by the RTTI parser of manually by the user) each function which hasn't changed yet is renamed, decompiled, and set its first argument to `this`.
 
@@ -154,7 +148,7 @@ Double click on a structure's member which corresponds to such a function will n
 
 Every name or type changing of a function or its corresponding function pointer member in vtables is hooked and synchronized among all of them. This means for example, the user could change the vtable member type through the decompiler window, and this new type (prototype) will be applied on the target function too.
 
-## Convenient reading of polymorphic code
+### Convenient reading of polymorphic code
 
 In line 15 at the previous image, there is a call to B::sub_9A8 (B::f_b in the source code). This function argument is `B *`:
 
@@ -168,7 +162,7 @@ so ultimately we can "cast" only specific calls to different virtual function:
 
 ![](images/f_b_after.png)
 
-## **Virtual Functions xref**
+### Virtual Functions xref
 
 The holy-grail of frustrated C++ reverse engineers. We maintain xrefs from virtual functions to the vtable struct's members which represents them!
 
@@ -178,10 +172,10 @@ Combining this with `ida-referee` enables us to track all the xrefs of virtual f
 
 *A limitation: we can only track virtual calls which already been decompiled. Fortunately, the auto-analysis knows to populate an argument type between functions, so with the iterative process of casting more arguments->decompiling all the relevant functions -> reading the code again and casting more arguments (...) this ability becomes really **powerful!***
 
-# Remarks
+## Remarks
 
 * The way we mark structure members as subclasses in IDAPython isn't synchronized right away to the IDB. The hack we do is to edit the structure so a synchronization will be triggered. You also may use
 
   `utils.refresh_struct(struct_ptr)`
 
-  which adds a dummy field at the end of the struct and then undefined it.
+which adds a dummy field at the end of the struct and then undefined it.
