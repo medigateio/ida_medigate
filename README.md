@@ -1,10 +1,10 @@
 # ida_medigate C++ plugin for IDA Pro
 
-## Motivation And Background
+## Motivation and Background
 
 Reverse engineering of compiled C++ code is not fun. Static Reverse engineering of compiled C++ code is **frustrating.** The main reason which makes it so hard is virtual functions. In contrast to compiled C code, there is no clear code flow. Too many times one can spend much time trying to understand what is the next virtual function is called, rather than just see the function like in compiled C code.
 
-When one investigates a virtual function, the amount of time he or she needs to effort in order to find its xref, is not sense.
+When one investigates a virtual function, the amount of time he or she needs to effort in order to find its xref is absurdly big.
 
 After too many C++ RE projects, I gave up and decided I need a flexible (Python) and stable (which I can easily maintain) tool for this type of research. Most of this plugin was written in January 2018, and recently I decided to clean the dust and add support of the new IDA (7.2) classes support.
 
@@ -14,7 +14,7 @@ This plugin isn't intended to work always "out of the box", but to be another to
 
 The plugin consists of two parts:
 
-1. Implementation of C++ classes and polymorphism over IDA
+1. Implementation of C++ classes and polymorphism for IDA
 2. A RTTI parser which rebuilds the classes hierarchy
 
 This first part is not dependent on the second part, so it possible to use the plugin to reverse engineering a binary that doesn't contain RTTI, by defining those classes manually based on the plugin's API.
@@ -27,7 +27,7 @@ What makes the plugin unique is the fact it uses the same environment the resear
 
 * IDA 7.5 SP  + Hex-Rays Decompiler + Python 3.
   * This version we partially support disassembly with no decompiler.
-* [ida-referee](https://github.com/joeleong/ida-referee) port.
+* [ida-referee port](https://github.com/joeleong/ida-referee) installed.
 
 ## Installation
 
@@ -39,7 +39,6 @@ What makes the plugin unique is the fact it uses the same environment the resear
 Assuming the binary original source code is the following (`examples/a.cpp`):
 
 ```c++
-
 using namespace std;
 
 class A {
@@ -92,11 +91,11 @@ When we just load the binary, the `main` function (`sub_84D` in the 32 bit versi
 
 Initiate the g++ RTTI parser and run it, using:
 
-`from ida_medigate.rtti_parser import GccRTTIParser`
-
-`GccRTTIParser.init_parser()` 
-
-`GccRTTIParser.build_all()`
+```py
+from ida_medigate.rtti_parser import GccRTTIParser
+GccRTTIParser.init_parser()
+GccRTTIParser.build_all()
+```
 
 Now refresh struct C (see Remarks section), cast `v0` to be `C *`, decompile again:
 
@@ -106,31 +105,40 @@ Now refresh struct C (see Remarks section), cast `v0` to be `C *`, decompile aga
 
 For cases that there are no RTTI, our infrastructure still enables to manually define c++ class. For the same example (examples/a32_stripped) you can create manually struct B, then select it's virtual table and type
 
-
-
 ![](images/f_b_choose_vtable.png)
 
-`from ida_medigate import cpp_utils`
-
-`cpp_utils.make_vtable("B")`
+```py
+from ida_medigate import cpp_utils
+cpp_utils.make_vtable("B")
+```
 
 `make_vtable` can also get `vtable_ea` and `vtable_ea_stop` instead of the selected area.
 
 Then create struct C, and apply the inheritance:
 
-`cpp_utils.add_baseclass("C", "B")`
+```py
+cpp_utils.add_baseclass("C", "B")
+```
 
 Now you can rebuild class C vtable by selecting it and typing:
 
-`cpp_utils.make_vtable("C")`
+```py
+cpp_utils.make_vtable("C")
+```
 
 Add structure Z, rebuild its vtable too, and now is the cool part:
 
-`cpp_utils.add_baseclass("C", "Z", 0x0c, to_update=True)` which apply C inheritance of Z at offset 0x0c and refresh the struct too (see remarks).
+```py
+cpp_utils.add_baseclass("C", "Z", 0x0c, to_update=True)
+```
+
+which applies C inheritance of Z at offset 0x0c and refresh the struct too (see remarks).
 
 The last thing remained is too update the second vtable of C, the one that implements the interface of Z. Mark this vtable and type:
 
-`cpp_utils.make_vtable("C", offset_in_class=0x0c)`
+```py
+cpp_utils.make_vtable("C", offset_in_class=0x0c)
+```
 
 ida_medigate knows that this vtable is the vtable of class Z and the result will be:
 
@@ -176,6 +184,8 @@ Combining this with `ida-referee` enables us to track all the xrefs of virtual f
 
 * The way we mark structure members as subclasses in IDAPython isn't synchronized right away to the IDB. The hack we do is to edit the structure so a synchronization will be triggered. You also may use
 
-  `utils.refresh_struct(struct_ptr)`
+```py
+utils.refresh_struct(struct_ptr)
+```
 
 which adds a dummy field at the end of the struct and then undefined it.
