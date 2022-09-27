@@ -142,38 +142,57 @@ class RTTIParser(object):
         pass
 
 
+def get_OFFSET_FROM_TYPEINF_SYM():
+    return 2 * utils.get_word_len()
+
+def get_RECORD_TYPEINFO_OFFSET():
+    return utils.get_word_len()
+
+# class_type_info consts
+def get_CLASS_TYPE_TYPEINFO_OFFSET():
+    return 0
+
+def get_CLASS_TYPE_NAME_OFFSET():
+    return utils.get_word_len()
+
+def get_CLASS_TYPE_SIZE():
+    return 2 * utils.get_word_len()
+
+# si_class_type_info consts
+def get_SI_TYPEINFO_BASE_OFFSET():
+    return get_CLASS_TYPE_SIZE()
+
+# vmi_class_type_info consts
+def get_VMI_TYPEINFO_BASE_CLASSES_NUM_OFFSET():
+    return get_CLASS_TYPE_SIZE() + 4
+
+def get_VMI_TYPEINFO_BASE_CLASSES_OFFSET():
+    return get_VMI_TYPEINFO_BASE_CLASSES_NUM_OFFSET() + 4
+
+# base_class vmi helper
+def get_BASE_CLASS_TYPEINFO_OFFSET():
+    return 0
+
+def get_BASE_CLASS_ATTRS_OFFSET():
+    return get_BASE_CLASS_TYPEINFO_OFFSET() + utils.get_word_len()
+
+def get_BASE_CLASS_SIZE():
+    return utils.get_word_len() * 2
+
+
 class GccRTTIParser(RTTIParser):
     VMI = "_ZTVN10__cxxabiv121__vmi_class_type_infoE"
     SI = "_ZTVN10__cxxabiv120__si_class_type_infoE"
     NONE = "_ZTVN10__cxxabiv117__class_type_infoE"
-    OFFSET_FROM_TYPEINF_SYM = 2 * utils.WORD_LEN
-
-    RECORD_TYPEINFO_OFFSET = utils.WORD_LEN
-    # class_type_info consts
-    CLASS_TYPE_TYPEINFO_OFFSET = 0
-    CLASS_TYPE_NAME_OFFSET = utils.WORD_LEN
-    CLASS_TYPE_SIZE = 2 * utils.WORD_LEN
-
-    # si_class_type_info consts
-    SI_TYPEINFO_BASE_OFFSET = CLASS_TYPE_SIZE
-
-    # vmi_class_type_info consts
-    VMI_TYPEINFO_BASE_CLASSES_NUM_OFFSET = CLASS_TYPE_SIZE + 4
-    VMI_TYPEINFO_BASE_CLASSES_OFFSET = VMI_TYPEINFO_BASE_CLASSES_NUM_OFFSET + 4
-
-    # base_class vmi helper
-    BASE_CLASS_TYPEINFO_OFFSET = 0
-    BASE_CLASS_ATTRS_OFFSET = BASE_CLASS_TYPEINFO_OFFSET + utils.WORD_LEN
-    BASE_CLASS_SIZE = utils.WORD_LEN * 2
 
     pure_virtual_name = "__cxa_pure_virtual"
 
     @classmethod
     def init_parser(cls):
         super(GccRTTIParser, cls).init_parser()
-        cls.type_vmi = ida_name.get_name_ea(idaapi.BADADDR, cls.VMI) + cls.OFFSET_FROM_TYPEINF_SYM
-        cls.type_si = ida_name.get_name_ea(idaapi.BADADDR, cls.SI) + cls.OFFSET_FROM_TYPEINF_SYM
-        cls.type_none = ida_name.get_name_ea(idaapi.BADADDR, cls.NONE) + cls.OFFSET_FROM_TYPEINF_SYM
+        cls.type_vmi = ida_name.get_name_ea(idaapi.BADADDR, cls.VMI) + get_OFFSET_FROM_TYPEINF_SYM()
+        cls.type_si = ida_name.get_name_ea(idaapi.BADADDR, cls.SI) + get_OFFSET_FROM_TYPEINF_SYM()
+        cls.type_none = ida_name.get_name_ea(idaapi.BADADDR, cls.NONE) + get_OFFSET_FROM_TYPEINF_SYM()
         cls.types = (cls.type_vmi, cls.type_si, cls.type_none)
 
     @classmethod
@@ -187,7 +206,7 @@ class GccRTTIParser(RTTIParser):
     @utils.batchmode
     def build_class_type(cls, class_type):
         idx = 0
-        for xref in idautils.XrefsTo(class_type - cls.OFFSET_FROM_TYPEINF_SYM):
+        for xref in idautils.XrefsTo(class_type - get_OFFSET_FROM_TYPEINF_SYM()):
             if (idx + 1) % 200 == 0:
                 # idc.batch(0)
                 log.info("\t Done %d", idx)
@@ -209,7 +228,7 @@ class GccRTTIParser(RTTIParser):
 
     @classmethod
     def parse_typeinfo(cls, typeinfo_ea):
-        typeinfo_type = utils.get_ptr(typeinfo_ea + cls.CLASS_TYPE_TYPEINFO_OFFSET)
+        typeinfo_type = utils.get_ptr(typeinfo_ea + get_CLASS_TYPE_TYPEINFO_OFFSET())
         if typeinfo_type == cls.type_none:
             parents = []
         elif typeinfo_type == cls.type_si:
@@ -222,29 +241,29 @@ class GccRTTIParser(RTTIParser):
 
     @classmethod
     def parse_si_typeinfo(cls, typeinfo_ea):
-        parent_typinfo_ea = utils.get_ptr(typeinfo_ea + cls.SI_TYPEINFO_BASE_OFFSET)
+        parent_typinfo_ea = utils.get_ptr(typeinfo_ea + get_SI_TYPEINFO_BASE_OFFSET())
         return [(parent_typinfo_ea, 0)]
 
     @classmethod
     def parse_vmi_typeinfo(cls, typeinfo_ea):
-        base_classes_num = idaapi.get_32bit(typeinfo_ea + cls.VMI_TYPEINFO_BASE_CLASSES_NUM_OFFSET)
+        base_classes_num = idaapi.get_32bit(typeinfo_ea + get_VMI_TYPEINFO_BASE_CLASSES_NUM_OFFSET())
         parents = []
         for i in range(base_classes_num):
             base_class_desc_ea = (
-                typeinfo_ea + cls.VMI_TYPEINFO_BASE_CLASSES_OFFSET + i * cls.BASE_CLASS_SIZE
+                typeinfo_ea + get_VMI_TYPEINFO_BASE_CLASSES_OFFSET() + i * get_BASE_CLASS_SIZE()
             )
-            parent_typeinfo_ea = utils.get_ptr(base_class_desc_ea + cls.BASE_CLASS_TYPEINFO_OFFSET)
-            parent_attrs = utils.get_word(base_class_desc_ea + cls.BASE_CLASS_ATTRS_OFFSET)
+            parent_typeinfo_ea = utils.get_ptr(base_class_desc_ea + get_BASE_CLASS_TYPEINFO_OFFSET())
+            parent_attrs = utils.get_word(base_class_desc_ea + get_BASE_CLASS_ATTRS_OFFSET())
             parent_offset_in_cls = parent_attrs >> 8
             parents.append((parent_typeinfo_ea, parent_offset_in_cls))
         return parents
 
     @classmethod
     def get_typeinfo_ea(cls, ea):
-        return utils.get_ptr(ea + cls.RECORD_TYPEINFO_OFFSET)
+        return utils.get_ptr(ea + get_RECORD_TYPEINFO_OFFSET())
 
     def get_typeinfo_name(self, typeinfo_ea):
-        name_ea = utils.get_ptr(typeinfo_ea + self.CLASS_TYPE_NAME_OFFSET)
+        name_ea = utils.get_ptr(typeinfo_ea + get_CLASS_TYPE_NAME_OFFSET())
         if name_ea is None or name_ea == BADADDR:
             mangled_class_name = ida_name.get_ea_name(typeinfo_ea)
         else:
@@ -279,7 +298,7 @@ class GccRTTIParser(RTTIParser):
         return class_name
 
     def try_parse_vtable(self, ea):
-        functions_ea = ea + utils.WORD_LEN
+        functions_ea = ea + utils.get_word_len()
         func_ea, _ = cpp_utils.get_vtable_line(
             functions_ea,
             ignore_list=self.types,
@@ -287,7 +306,7 @@ class GccRTTIParser(RTTIParser):
         )
         if func_ea is None:
             return None
-        vtable_offset = utils.get_signed_int(ea - utils.WORD_LEN) * (-1)
+        vtable_offset = utils.get_signed_int(ea - utils.get_word_len()) * (-1)
         vtable_struct, this_type = self.create_vtable_struct(vtable_offset)
         cpp_utils.update_vtable_struct(
             functions_ea,

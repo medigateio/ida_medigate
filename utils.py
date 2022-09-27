@@ -39,24 +39,15 @@ def get_word_len():
         return 4
     raise Exception("Unknown address size")
 
-
-# FIXME: it's not enough to just update WORD_LEN,
-# we also need to update all the global vars and class vars,
-# that are calculated using WORD_LEN
-# We shouldn't store word length in global var at all.
-# Instead we should have a getter func, eg. get_word_len()
-# and call it each time we need word length
-# And we must get rid of all the global and class vars, that depend on word length
-# Insead use instance classes
-# WORD length in bytes
-WORD_LEN = get_word_len()
-
-if WORD_LEN == 4:
-    log.debug("is 32 bit")
-elif WORD_LEN == 8:
-    log.debug("is 64 bit")
-else:
-    log.error("Unknown address size")
+try:
+    if get_word_len() == 4:
+        log.debug("is 32 bit")
+    elif get_word_len() == 8:
+        log.debug("is 64 bit")
+    else:
+        log.warn("Unexpected address size: %d", get_word_len())
+except Exception as ex:
+    log.debug(ex)
 
 
 def get_word(ea):
@@ -252,15 +243,15 @@ def get_member_params(member_tif, is_offs):
         mt.tid = substruct_ptr.id
         member_size = ida_struct.get_struc_size(substruct_ptr.id)
     else:
-        flag = idaapi.FF_QWORD if WORD_LEN == 8 else idaapi.FF_DWORD
+        flag = idaapi.FF_QWORD if get_word_len() == 8 else idaapi.FF_DWORD
         mt = None
-        member_size = WORD_LEN
+        member_size = get_word_len()
 
     if is_offs:
         flag |= idaapi.FF_0OFF
         mt = ida_nalt.opinfo_t()
         r = ida_nalt.refinfo_t()
-        r.init(ida_nalt.get_reftype_by_size(WORD_LEN) | ida_nalt.REFINFO_NOBASE)
+        r.init(ida_nalt.get_reftype_by_size(get_word_len()) | ida_nalt.REFINFO_NOBASE)
         mt.ri = r
 
     return flag, mt, member_size
@@ -608,7 +599,7 @@ def expand_struct(struct_id, new_size):
         ida_struct.get_struc_size(struct_id),
         new_size,
     )
-    if ida_struct.get_struc_size(struct_id) > new_size - WORD_LEN:
+    if ida_struct.get_struc_size(struct_id) > new_size - get_word_len():
         return
     fix_list = []
     xrefs = idautils.XrefsTo(struct.id)
@@ -652,7 +643,7 @@ def expand_struct(struct_id, new_size):
                 ]
             )
 
-    ret = add_to_struct(ida_struct.get_struc(struct_id), None, None, new_size - WORD_LEN)
+    ret = add_to_struct(ida_struct.get_struc(struct_id), None, None, new_size - get_word_len())
     log.debug("Now fix args:")
     for fix_args in fix_list:
         ret = idc.add_struc_member(*fix_args)

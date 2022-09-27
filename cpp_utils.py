@@ -50,7 +50,7 @@ def get_vtable_line(ea, stop_ea=None, ignore_list=None, pure_virtual_name=None):
     is_pure_func = pure_virtual_name is not None and idc.GetDisasm(ea).endswith(pure_virtual_name)
     if func_ea in ignore_list and not is_pure_func:
         return None, 0
-    return func_ea, ea + utils.WORD_LEN
+    return func_ea, ea + utils.get_word_len()
 
 
 def is_valid_vtable_name(member_name):
@@ -387,7 +387,7 @@ def update_vtable_struct(
         if add_dummy_member:
             utils.add_to_struct(vtable_struct, "dummy_%d" % dummy_i, func_ptr)
             dummy_i += 1
-            offset += utils.WORD_LEN
+            offset += utils.get_word_len()
         ptr_member = utils.add_to_struct(
             vtable_struct, new_func_name, func_ptr, offset, overwrite=True, is_offs=True
         )
@@ -399,7 +399,7 @@ def update_vtable_struct(
                 vtable_struct.id,
                 offset,
             )
-        offset += utils.WORD_LEN
+        offset += utils.get_word_len()
         if not ida_xref.add_dref(ptr_member.id, func_ea, ida_xref.XREF_USER | ida_xref.dr_I):
             log.warn(
                 "Couldn't create xref between member %s and func %s",
