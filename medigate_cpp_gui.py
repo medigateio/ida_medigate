@@ -74,6 +74,7 @@ class medigate_cpp_gui_plugin_t(idaapi.plugin_t, idaapi.UI_Hooks):
     wanted_hotkey = 'Ctrl-Alt-M'
     plugin_name = 'Medigate Gui'
     wanted_name = 'Medigate Gui'
+    help = "medigate cpp's gui script"
 
     def __init__(self, name = 'medigate gui' ):
         super(medigate_cpp_gui_plugin_t, self).__init__()
