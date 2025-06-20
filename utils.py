@@ -10,7 +10,6 @@ import ida_lines
 import ida_nalt
 import ida_name
 import ida_search
-import ida_struct
 import ida_typeinf
 import ida_xref
 import idaapi
@@ -21,7 +20,7 @@ from idc import BADADDR
 
 # WORD length in bytes
 WORD_LEN = None
-
+NOT_UNION = 0
 
 def update_word_len(code, old=0):
     global WORD_LEN
@@ -115,13 +114,13 @@ def update_func_details(func_ea, func_details):
 
 
 def add_to_struct(
-    struct,
-    member_name,
-    member_type=None,
+    struct: ida_typeinf.tinfo_t,
+    member_name: str,
+    member_type: ida_typeinf.tinfo_t=None,
     offset=BADADDR,
     is_offset=False,
     overwrite=False,
-):
+) -> tuple[int, ida_typeinf.udm_t] | None:
     mt = None
     flag = idaapi.FF_DWORD
     member_size = WORD_LEN
@@ -131,11 +130,12 @@ def add_to_struct(
         if substruct is not None:
             flag = idaapi.FF_STRUCT
             mt = ida_nalt.opinfo_t()
-            mt.tid = substruct.id
+            substruct_tid = substruct.get_tid()
+            mt.tid = substruct_tid
             logging.debug(
-                f"Is struct: {ida_struct.get_struc_name(substruct.id)}/{substruct.id}"
+                f"Is struct: {ida_typeinf.get_tid_name(substruct_tid)}/{substruct_tid}"
             )
-            member_size = ida_struct.get_struc_size(substruct.id)
+            member_size = substruct.get_size()
     elif WORD_LEN == 4:
         flag = idaapi.FF_DWORD
     elif WORD_LEN == 8:
@@ -148,41 +148,32 @@ def add_to_struct(
         mt.ri = r
 
     new_member_name = member_name
-    member_ptr = ida_struct.get_member(struct, offset)
-    if overwrite and member_ptr:
-        if ida_struct.get_member_name(member_ptr.id) != member_name:
+    member: ida_typeinf.udm_t = struct.get_udm_by_offset(offset)
+    if overwrite and member:
+        if member.name != member_name:
             logging.debug("Overwriting!")
-            ret_val = ida_struct.set_member_name(struct, offset, member_name)
-            i = 0
-            while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
-                new_member_name = "%s_%d" % (member_name, i)
+            ret_val = struct.rename_udm(offset, member_name)
+            while not ret_val:
+                formatted_member_name = f"{member_name}_{i}"
                 i += 1
                 if i > 250:
-                    logging.debug("failed change name")
-                    return
-                ret_val = ida_struct.set_member_name(struct, offset, new_member_name)
+                    return None
+                ret_val = struct.rename_udm(offset, formatted_member_name)
 
     else:
-        ret_val = ida_struct.add_struc_member(
-            struct, new_member_name, offset, flag, mt, member_size
-        )
-        i = 0
-        while ret_val == ida_struct.STRUC_ERROR_MEMBER_NAME:
-            new_member_name = "%s_%d" % (member_name, i)
+        ret_val = struct.add_udm(type=mt, offset=offset, etf_flags=flag)
+        member: ida_typeinf.udm_t = struct.get_udm_by_offset(offset)
+        logging.debug("Overwriting!")
+        ret_val = struct.rename_udm(offset, member_name)
+        while not ret_val:
+            formatted_member_name = f"{member_name}_{i}"
             i += 1
             if i > 250:
-                return
-            ret_val = ida_struct.add_struc_member(
-                struct, new_member_name, offset, flag, mt, member_size
-            )
-        if ret_val != 0:
-            logging.debug(f"ret_val: {ret_val}")
-        member_ptr = ida_struct.get_member_by_name(struct, new_member_name)
-    if member_type is not None and member_ptr is not None:
-        ida_struct.set_member_tinfo(
-            struct, member_ptr, 0, member_type, idaapi.TINFO_DEFINITE
-        )
-    return member_ptr
+                return None
+            ret_val = struct.rename_udm(offset, formatted_member_name)
+
+    return struct.get_udm(name=new_member_name)
+    
 
 
 def set_func_name(func_ea, func_name):
@@ -194,85 +185,84 @@ def set_func_name(func_ea, func_name):
     return new_name
 
 
-def deref_tinfo(tinfo):
+def deref_tinfo(tinfo: ida_typeinf.tinfo_t):
     pointed_obj = None
     if tinfo.is_ptr():
         pointed_obj = tinfo.get_pointed_object()
     return pointed_obj
 
 
-def get_struc_from_tinfo(struct_tinfo):
-
-    if ida_hexrays.init_hexrays_plugin() and (
-        not (struct_tinfo.is_struct() or struct_tinfo.is_union())
-    ):
-        return None
-    struct_id = ida_struct.get_struc_id(struct_tinfo.get_type_name())
-    if struct_id == BADADDR:
-        return None
-    struct = ida_struct.get_struc(struct_id)
-    return struct
-
-
-def deref_struct_from_tinfo(tinfo):
+def deref_struct_from_tinfo(tinfo: ida_typeinf.tinfo_t):
     struct_tinfo = deref_tinfo(tinfo)
     if struct_tinfo is None:
         return None
-    return get_struc_from_tinfo(struct_tinfo)
+    return struct_tinfo
 
 
-def extract_struct_from_tinfo(tinfo):
-    struct = get_struc_from_tinfo(tinfo)
+def extract_struct_from_tinfo(tinfo: ida_typeinf.tinfo_t):
+    struct = tinfo
     if struct is None:
         struct = deref_struct_from_tinfo(tinfo)
     return struct
 
 
-def get_member_tinfo(member, member_typeinf=None):
+def get_member_tinfo(member: ida_typeinf.udm_t, member_typeinf: ida_typeinf.tinfo_t=None):
     if member_typeinf is None:
         member_typeinf = idaapi.tinfo_t()
-    ida_struct.get_member_tinfo(member_typeinf, member)
+    member_typeinf = member.type
     return member_typeinf
 
 
-def get_sptr_by_name(struct_name):
-    s_id = ida_struct.get_struc_id(struct_name)
-    return ida_struct.get_struc(s_id)
+def get_sptr(udm: ida_typeinf.udm_t):
+    tif = udm.type
+    if tif.is_udt() and tif.is_struct():
+        return tif
+    else:
+        return None
 
 
-def get_member_substruct(member):
+def get_sptr_by_name(struct_name: str):
+    return ida_typeinf.tinfo_t(name=struct_name)
+
+
+def get_member_substruct(member: ida_typeinf.udm_t):
     member_type = get_member_tinfo(member)
     if member_type is not None and member_type.is_struct():
-        current_struct_id = ida_struct.get_struc_id(member_type.get_type_name())
-        return ida_struct.get_struc(current_struct_id)
+        return member_type.get_type_name()
     elif member.flag & idaapi.FF_STRUCT == idaapi.FF_STRUCT:
-        return ida_struct.get_sptr(member)
+        return get_sptr(member)
     return None
 
 
-def set_member_name(struct, offset, new_name):
+def set_member_name(struct: ida_typeinf.tinfo_t, offset: int, new_name: str):
     i = 0
-    ret_val = ida_struct.set_member_name(struct, offset, new_name)
+    ret_val = struct.rename_udm(offset, new_name)
     while not ret_val:
-        formatted_new_name = "%s_%d" % (new_name, i)
+        formatted_new_name = f"{new_name}_{i}"
         i += 1
         if i > 250:
             return False
-        ret_val = ida_struct.set_member_name(struct, offset, formatted_new_name)
+        ret_val = struct.rename_udm(offset, formatted_new_name)
     return True
 
 
 def get_or_create_struct_id(struct_name, is_union=False):
-    struct_id = ida_struct.get_struc_id(struct_name)
-    if struct_id != BADADDR:
-        return struct_id
-    struct_id = ida_struct.add_struc(BADADDR, struct_name, is_union)
-    return struct_id
+    try:
+        return ida_typeinf.tinfo_t(name=struct_name).get_tid()
+    except ValueError as e:
+        udt = ida_typeinf.udt_type_data_t()
+        type_info = ida_typeinf.tinfo_t()
+        udt.is_union = is_union
+        if (
+            type_info.create_udt(udt) and
+            type_info.set_named_type(None, struct_name) == ida_typeinf.TERR_OK
+        ):
+            return type_info.get_tid()
 
 
 def get_or_create_struct(struct_name):
     struct_id = get_or_create_struct_id(struct_name)
-    return ida_struct.get_struc(struct_id)
+    return ida_typeinf.tinfo_t(tid=struct_id)
 
 
 def get_signed_int(ea):
@@ -282,24 +272,26 @@ def get_signed_int(ea):
     return x
 
 
-def expand_struct(struct_id, new_size):
-    struct = ida_struct.get_struc(struct_id)
-    if struct is None:
+def expand_struct(struct_id: int, new_size: int):
+    try:
+        struct = ida_typeinf.tinfo_t(tid=struct_id)
+    except ValueError:
         logging.warning("Struct id 0x%x wasn't found", struct_id)
         return
     logging.debug(
         "Expanding struc %s 0x%x -> 0x%x",
-        ida_struct.get_struc_name(struct_id),
-        ida_struct.get_struc_size(struct_id),
+        ida_typeinf.get_tid_name(struct_id),
+        struct.get_size(),
         new_size,
     )
-    if ida_struct.get_struc_size(struct_id) > new_size - WORD_LEN:
+    if struct.get_size() > new_size - WORD_LEN:
         return
     fix_list = []
-    xrefs = idautils.XrefsTo(struct.id)
+    xrefs = idautils.XrefsTo(struct.get_tid())
     for xref in xrefs:
         if xref.type == ida_xref.dr_R and xref.user == 0 and xref.iscode == 0:
-            member, full_name, x_struct = ida_struct.get_member_by_id(xref.frm)
+            udm = ida_typeinf.udm_t()
+            member, full_name, x_struct = struct.get_udm_by_tid(udm, xref.frm)
             if x_struct is not None:
                 old_name = ida_struct.get_member_name(member.id)
                 offset = member.soff
@@ -450,7 +442,7 @@ def force_make_struct(ea, struct_name):
     sptr = get_sptr_by_name(struct_name)
     if sptr == BADADDR:
         return False
-    s_size = ida_struct.get_struc_size(sptr)
+    s_size = sptr.get_size()
     ida_bytes.del_items(ea, ida_bytes.DELIT_SIMPLE, s_size)
     return ida_bytes.create_struct(ea, s_size, sptr.id)
 
@@ -470,14 +462,16 @@ def set_name_retry(ea, name, name_func=ida_name.set_name, max_attempts=100):
 def add_struc_retry(name, max_attempts=100):
     i = 0
     suggested_name = name
-    sid = ida_struct.add_struc(BADADDR, suggested_name)
-    while sid == BADADDR:
+    udt = ida_typeinf.udt_type_data_t()
+    type_info = ida_typeinf.tinfo_t()
+    udt.is_union = NOT_UNION
+    type_info.create_udt(udt)
+    while type_info.set_named_type(None, suggested_name) == ida_typeinf.TERR_OK:
         suggested_name = name + "_" + str(i)
-        sid = ida_struct.add_struc(BADADDR, suggested_name)
         i += 1
         if i == max_attempts:
-            return None, sid
-    return suggested_name, sid
+            return None, type_info.get_tid()
+    return suggested_name, type_info.get_tid()
 
 
 def get_selected_range_or_line():
@@ -488,8 +482,8 @@ def get_selected_range_or_line():
         return ida_kernwin.get_screen_ea(), None
 
 
-def refresh_struct(sptr):
+def refresh_struct(sptr: ida_typeinf.tinfo_t):
     #  Hack: need to refresh structure so MF_BASECLASS will be updated
     member_ptr = add_to_struct(sptr, "dummy")
-    ida_struct.del_struc_member(sptr, member_ptr.soff)
+    sptr.del_udm(index=member_ptr[0])
 

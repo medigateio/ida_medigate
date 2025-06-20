@@ -6,7 +6,6 @@ import ida_idp
 import ida_kernwin
 import ida_nalt
 import ida_name
-import ida_struct
 import idaapi
 import idc
 from idc import BADADDR

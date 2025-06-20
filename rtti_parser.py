@@ -1,7 +1,6 @@
 import logging
 
 import ida_name
-import ida_struct
 import idaapi
 import idautils
 import idc

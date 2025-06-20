@@ -4,7 +4,6 @@ from functools import partial
 import ida_bytes
 import ida_hexrays
 import ida_name
-import ida_struct
 import ida_typeinf
 import ida_xref
 import idaapi
@@ -528,11 +527,14 @@ def set_polymorhpic_func_name(union_name, offset, name, force=False):
 
 
 def create_class(class_name, has_vtable, parent_class=None):
-    class_id = ida_struct.add_struc(BADADDR, class_name)
-    class_ptr = ida_struct.get_struc(class_id)
+    udt = ida_typeinf.udt_type_data_t()
+    type_info = ida_typeinf.tinfo_t()
+    udt.is_union = utils.NOT_UNION
+    if type_info.create_udt(udt) and type_info.set_named_type(None, class_name) == ida_typeinf.TERR_OK:
+        class_id = type_info.get_tid()
     # if parent class ->
     # if has_vtable-> if not parent- create vtable, if parent - install vtable
-    return class_ptr
+    return ida_typeinf.tinfo_t(tid=class_id)
 
 
 def create_vtable_struct(sptr, name, vtable_offset, parent_name=None):
@@ -558,10 +560,18 @@ def create_vtable_struct(sptr, name, vtable_offset, parent_name=None):
         logging.exception(
             "create_vtable_struct(%s, %d): vtable_name is" " None", name, vtable_offset
         )
-    vtable_id = ida_struct.add_struc(BADADDR, vtable_name, False)
+    udt = ida_typeinf.udt_type_data_t()
+    udt.is_union = utils.NOT_UNION
+    vtable_type_info = ida_typeinf.tinfo_t()
+    if (
+        vtable_type_info.create_udt(udt) and
+        vtable_type_info.set_named_type(None, name) == ida_typeinf.TERR_OK
+    ):
+        vtable_id = vtable_type_info.get_tid()
+    
     if vtable_id == BADADDR:
         logging.exception("Couldn't create struct %s", vtable_name)
-    vtable_struct = ida_struct.get_struc(vtable_id)
+    vtable_struct = ida_typeinf.tinfo_t(tid=vtable_id)
     if parents_chain:
         for parent_name, offset in parents_chain:
             add_child_vtable(parent_name, name, vtable_id, offset)
