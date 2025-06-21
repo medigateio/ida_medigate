@@ -290,48 +290,50 @@ def expand_struct(struct_id: int, new_size: int):
     xrefs = idautils.XrefsTo(struct.get_tid())
     for xref in xrefs:
         if xref.type == ida_xref.dr_R and xref.user == 0 and xref.iscode == 0:
-            udm = ida_typeinf.udm_t()
-            member, full_name, x_struct = struct.get_udm_by_tid(udm, xref.frm)
+            member = ida_typeinf.udm_t()
+            struct.get_udm_by_tid(member, xref.frm)
+            x_struct = ida_typeinf.tinfo_t(tid=xref.frm)
             if x_struct is not None:
-                old_name = ida_struct.get_member_name(member.id)
-                offset = member.soff
-                marker_name = "marker_%d" % random.randint(0, 0xFFFFFF)
-                idc.add_struc_member(
-                    x_struct.id,
-                    marker_name,
-                    member.soff + new_size,
-                    idaapi.FF_DATA | idaapi.FF_BYTE,
-                    -1,
-                    0,
+                old_name: str = member.name
+                offset: int = member.offset
+                marker_name = "marker_{random.randint(0, 0xFFFFFF)}"
+                x_struct.add_udm(
+                    name=marker_name,
+                    type=ida_typeinf.BTF_VOID,
+                    offset=member.soff + new_size,
+                    etf_flags=idaapi.FF_DATA | idaapi.FF_BYTE,
                 )
                 logging.debug(
                     "Delete member (0x%x-0x%x)", member.soff, member.soff + new_size - 1
                 )
-                ida_struct.del_struc_members(
-                    x_struct, member.soff, member.soff + new_size - 1
-                )
+                x_struct.del_udms(member.soff, member.soff + new_size)
                 fix_list.append(
                     [
-                        x_struct.id,
+                        x_struct.get_tid(),
                         old_name,
+                        struct_id,
                         offset,
                         idaapi.FF_STRUCT | idaapi.FF_DATA,
-                        struct_id,
-                        new_size,
                     ]
                 )
             else:
                 logging.warning("Xref wasn't struct_member 0x%x", xref.frm)
 
     ret = add_to_struct(
-        ida_struct.get_struc(struct_id), None, None, new_size - WORD_LEN
+        struct, None, None, new_size - WORD_LEN
     )
     logging.debug("Now fix args:")
     for fix_args in fix_list:
-        ret = idc.add_struc_member(*fix_args)
-        logging.debug("%s = %d", fix_args, ret)
-        x_struct_id = fix_args[0]
-        idc.del_struc_member(x_struct_id, ida_struct.get_struc_size(x_struct_id))
+        x_struct = ida_typeinf.tinfo_t(tid=fix_args[0])
+        ret = x_struct.add_udm(
+            name=fix_args[1],
+            type=ida_typeinf.tinfo_t(fix_args[2]),
+            offset=fix_args[3],
+            etf_flags=fix_args[4]
+        )
+        logging.debug(f"{fix_args} = {ret}")
+        temp_udm_index, _ = x_struct.get_udm_by_offset(x_struct.get_size())
+        x_struct.del_udm(temp_udm_index)
 
 
 def get_curline_striped_from_viewer(viewer):
