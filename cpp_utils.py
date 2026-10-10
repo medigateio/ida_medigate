@@ -4,7 +4,10 @@ from functools import partial
 import ida_bytes
 import ida_hexrays
 import ida_name
-import ida_struct
+try:
+    from . import compat_struct as ida_struct  # ida_struct removed in IDA 9.0
+except ImportError:
+    import compat_struct as ida_struct
 import ida_typeinf
 import ida_xref
 import idaapi
@@ -214,7 +217,7 @@ def install_vtables_union(
     if class_vtable_member:
         member_ptr = class_vtable_member
     else:
-        member_id = ida_struct.add_struc_member(
+        ida_struct.add_struc_member(
             parent_struct,
             get_class_vtable_field_name(class_name),
             offset,
@@ -222,7 +225,9 @@ def install_vtables_union(
             mt,
             struct_size,
         )
-        member_ptr = ida_struct.get_member_by_id(member_id)
+        # add_struc_member returns a status code, not a member id; fetch the
+        # member that was just created at `offset`.
+        member_ptr = ida_struct.get_member(parent_struct, offset)
     ida_struct.set_member_tinfo(
         parent_struct, member_ptr, 0, vtables_union_ptr_type, idaapi.TINFO_DEFINITE
     )

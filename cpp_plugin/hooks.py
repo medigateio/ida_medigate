@@ -6,7 +6,7 @@ import ida_idp
 import ida_kernwin
 import ida_nalt
 import ida_name
-import ida_struct
+from .. import compat_struct as ida_struct  # ida_struct removed in IDA 9.0
 import idaapi
 import idc
 from idc import BADADDR

@@ -2,7 +2,10 @@ import logging
 import random
 
 import ida_bytes
-import ida_enum
+try:
+    import ida_enum  # removed in IDA 9.0
+except ImportError:
+    ida_enum = None
 import ida_funcs
 import ida_hexrays
 import ida_kernwin
@@ -10,7 +13,13 @@ import ida_lines
 import ida_nalt
 import ida_name
 import ida_search
-import ida_struct
+try:
+    # IDA 9.0 removed the ida_struct module; use the compat shim backed by
+    # ida_typeinf / idc.  Relative import when loaded as part of the package;
+    # flat import when a test loads this module standalone.
+    from . import compat_struct as ida_struct
+except ImportError:
+    import compat_struct as ida_struct
 import ida_typeinf
 import ida_xref
 import idaapi
@@ -23,18 +32,24 @@ from idc import BADADDR
 WORD_LEN = None
 
 
-def update_word_len(code, old=0):
+def update_word_len(code=0, old=0):
     global WORD_LEN
-    info = idaapi.get_inf_structure()
-    if info.is_64bit():
-        logging.debug("is 32 bit")
+    # IDA 9.0 removed idaapi.get_inf_structure(); query bitness directly.
+    if idaapi.inf_is_64bit():
+        logging.debug("is 64 bit")
         WORD_LEN = 8
-    elif info.is_32bit():
+    else:
         logging.debug("is 32 bit")
         WORD_LEN = 4
 
 
 idaapi.notify_when(idaapi.NW_OPENIDB, update_word_len)
+# Also set it now, in case a database is already open when this module loads
+# (rtti_parser evaluates WORD_LEN at class-definition time).
+try:
+    update_word_len()
+except Exception:
+    pass
 
 
 def get_word(ea):
@@ -427,6 +442,8 @@ def get_code_xrefs(ea):
 
 
 def get_enum_const_name(enum_name, const_val):
+    if ida_enum is None:  # removed in IDA 9.0
+        return None
     enum = ida_enum.get_enum(enum_name)
     if enum != BADADDR:
         const = ida_enum.get_const(enum, const_val, 0, BADADDR)
@@ -436,14 +453,21 @@ def get_enum_const_name(enum_name, const_val):
 
 
 def find_hex_string(start_ea, stop_ea, hex_string):
-    curr_ea = ida_search.find_binary(
-        start_ea, stop_ea, hex_string, 16, ida_search.SEARCH_DOWN
-    )
-    while curr_ea != BADADDR:
-        yield curr_ea
-        curr_ea = ida_search.find_binary(
-            curr_ea + len(hex_string), stop_ea, hex_string, 16, ida_search.SEARCH_DOWN
+    # IDA 9.0 removed ida_search.find_binary(); use ida_bytes.bin_search().
+    patterns = ida_bytes.compiled_binpat_vec_t()
+    ida_bytes.parse_binpat_str(patterns, start_ea, hex_string, 16)
+    step = max(1, len(hex_string.split()))
+    ea = start_ea
+    while ea < stop_ea:
+        res = ida_bytes.bin_search(
+            ea, stop_ea, patterns, ida_bytes.BIN_SEARCH_FORWARD
         )
+        if isinstance(res, tuple):
+            res = res[0]
+        if res is None or res == BADADDR:
+            break
+        yield res
+        ea = res + step
 
 
 def force_make_struct(ea, struct_name):

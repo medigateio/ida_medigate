@@ -1,7 +1,10 @@
 import logging
 
 import ida_name
-import ida_struct
+try:
+    from . import compat_struct as ida_struct  # ida_struct removed in IDA 9.0
+except ImportError:
+    import compat_struct as ida_struct
 import idaapi
 import idautils
 import idc
